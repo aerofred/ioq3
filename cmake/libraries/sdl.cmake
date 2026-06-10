@@ -9,6 +9,18 @@ if(EMSCRIPTEN)
     return()
 endif()
 
+if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    if(NOT SDL2_INCLUDE_DIRS OR NOT SDL2_LIBRARIES)
+        message(FATAL_ERROR "On iOS, set SDL2_INCLUDE_DIRS and SDL2_LIBRARIES (for example via misc/ios/setup_sdl2.sh)")
+    endif()
+
+    list(APPEND CLIENT_LIBRARIES ${SDL2_LIBRARIES})
+    list(APPEND CLIENT_INCLUDE_DIRS ${SDL2_INCLUDE_DIRS})
+    list(APPEND RENDERER_LIBRARIES ${SDL2_LIBRARIES})
+    list(APPEND RENDERER_INCLUDE_DIRS ${SDL2_INCLUDE_DIRS})
+    return()
+endif()
+
 set(INTERNAL_SDL_DIR ${SOURCE_DIR}/thirdparty/SDL2-2.32.8)
 
 include(utils/arch)

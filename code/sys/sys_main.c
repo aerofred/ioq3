@@ -50,6 +50,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
+#ifdef IOS
+#include "../ios/ios_layer.h"
+#endif
 
 static char binaryPath[ MAX_OSPATH ] = { 0 };
 static char installPath[ MAX_OSPATH ] = { 0 };
@@ -877,6 +880,12 @@ int main( int argc, char **argv )
 	}
 #endif
 
+#ifdef IOS
+	Q_strcat( commandLine, sizeof( commandLine ),
+		"+set r_mode -2 +set r_fullscreen 1 +set in_touch 1 "
+		"+set vm_cgame 2 +set vm_game 2 +set vm_ui 2 " );
+#endif
+
 	CON_Init( );
 	Com_Init( commandLine );
 	NET_Init( );
@@ -892,6 +901,13 @@ int main( int argc, char **argv )
 #else
 	while( 1 )
 	{
+#ifdef IOS
+		if( !IOS_Layer_IsActive() )
+		{
+			Sys_Sleep( 100 );
+			continue;
+		}
+#endif
 		Com_Frame( );
 	}
 #endif

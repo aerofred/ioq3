@@ -1,4 +1,6 @@
 build*
+misc/ios/sdl2-build/
+build/ios/
 *.swp
 *tags
 *~

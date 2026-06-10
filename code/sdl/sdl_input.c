@@ -31,6 +31,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <stdlib.h>
 
 #include "../client/client.h"
+#ifdef IOS
+#include "../client/cl_touch.h"
+#include "../ios/ios_layer.h"
+#endif
 #include "../sys/sys_local.h"
 
 #if !SDL_VERSION_ATLEAST(2, 0, 17)
@@ -1040,6 +1044,20 @@ static void IN_ProcessEvents( void )
 	{
 		switch( e.type )
 		{
+#ifdef IOS
+			case SDL_FINGERDOWN:
+				IN_TouchFinger( e.tfinger.fingerId, e.tfinger.x, e.tfinger.y, qtrue, qfalse );
+				break;
+
+			case SDL_FINGERMOTION:
+				IN_TouchFinger( e.tfinger.fingerId, e.tfinger.x, e.tfinger.y, qtrue, qtrue );
+				break;
+
+			case SDL_FINGERUP:
+				IN_TouchFinger( e.tfinger.fingerId, e.tfinger.x, e.tfinger.y, qfalse, qfalse );
+				break;
+#endif
+
 			case SDL_KEYDOWN:
 				if ( e.key.repeat && Key_GetCatcher( ) == 0 )
 					break;
@@ -1203,6 +1221,24 @@ static void IN_ProcessEvents( void )
 				}
 				break;
 
+#ifdef IOS
+			case SDL_APP_WILLENTERBACKGROUND:
+			case SDL_APP_DIDENTERBACKGROUND:
+				IOS_Layer_SetActive( qfalse );
+				Cvar_SetValue( "com_minimized", 1 );
+				Cvar_SetValue( "com_unfocused", 1 );
+				Cvar_SetValue( "s_muted", 1 );
+				break;
+
+			case SDL_APP_WILLENTERFOREGROUND:
+			case SDL_APP_DIDENTERFOREGROUND:
+				IOS_Layer_SetActive( qtrue );
+				Cvar_SetValue( "com_minimized", 0 );
+				Cvar_SetValue( "com_unfocused", 0 );
+				Cvar_SetValue( "s_muted", 0 );
+				break;
+#endif
+
 #if defined(PROTOCOL_HANDLER) && defined(__APPLE__)
 			case SDL_DROPFILE:
 				{
@@ -1277,6 +1313,10 @@ void IN_Frame( void )
 		vidRestartTime = 0;
 		Cbuf_AddText( "vid_restart\n" );
 	}
+
+#ifdef IOS
+	IN_TouchFrame();
+#endif
 }
 
 /*
@@ -1311,6 +1351,11 @@ void IN_Init( void *windowData )
 	SDL_EventState( SDL_DROPFILE, SDL_ENABLE );
 #endif
 
+#ifdef IOS
+	SDL_SetHint( SDL_HINT_TOUCH_MOUSE_EVENTS, "0" );
+	SDL_SetHint( SDL_HINT_MOUSE_TOUCH_EVENTS, "0" );
+#endif
+
 	SDL_StartTextInput( );
 
 	mouseAvailable = ( in_mouse->value != 0 );
@@ -1321,6 +1366,9 @@ void IN_Init( void *windowData )
 	Cvar_SetValue( "com_minimized", appState & SDL_WINDOW_MINIMIZED );
 
 	IN_InitJoystick( );
+#ifdef IOS
+	IN_TouchInit();
+#endif
 	Com_DPrintf( "------------------------------------\n" );
 }
 
@@ -1337,6 +1385,9 @@ void IN_Shutdown( void )
 	mouseAvailable = qfalse;
 
 	IN_ShutdownJoystick( );
+#ifdef IOS
+	IN_TouchShutdown();
+#endif
 
 	SDL_window = NULL;
 }

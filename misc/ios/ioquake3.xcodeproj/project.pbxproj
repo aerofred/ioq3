@@ -1,0 +1,215 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXFileReference section */
+		AB0000010000000000000001 /* ioquake3.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ioquake3.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB0000020000000000000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AB00000D0000000000000001 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXBuildFile section */
+		AB00000E0000000000000001 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = AB00000D0000000000000001 /* main.c */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXGroup section */
+		AB0000030000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				AB00000C0000000000000001 /* Config */,
+				AB0000040000000000000001 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		AB0000040000000000000001 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AB0000010000000000000001 /* ioquake3.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		AB00000C0000000000000001 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				AB0000020000000000000001 /* Info.plist */,
+				AB00000D0000000000000001 /* main.c */,
+			);
+			name = Config;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		AB0000050000000000000001 /* ioquake3 */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AB00000A0000000000000001 /* Build configuration list for PBXNativeTarget "ioquake3" */;
+			buildPhases = (
+				AB00000F0000000000000001 /* Sources */,
+				AB0000060000000000000001 /* Build Engine */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ioquake3;
+			productName = ioquake3;
+			productReference = AB0000010000000000000001 /* ioquake3.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AB0000070000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1500;
+			};
+			buildConfigurationList = AB0000090000000000000001 /* Build configuration list for PBXProject "ioquake3" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = AB0000030000000000000001;
+			productRefGroup = AB0000040000000000000001 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				AB0000050000000000000001 /* ioquake3 */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		AB00000F0000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AB00000E0000000000000001 /* main.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		AB0000060000000000000001 /* Build Engine */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Build Engine";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "set -e\ncd \"${SRCROOT}/../..\"\nchmod +x misc/ios/build-ios.sh misc/ios/copy_game_data.sh misc/ios/generate_app_icon.sh misc/ios/setup_sdl2.sh\nif [ ! -f misc/ios/sdl2-build/libSDL2-ios.a ]; then\n  misc/ios/setup_sdl2.sh\nfi\nmisc/ios/build-ios.sh\nAPP_OUT=\"${BUILT_PRODUCTS_DIR}/${WRAPPER_NAME}\"\nrm -rf \"${APP_OUT}\"\nmkdir -p \"${APP_OUT}\"\ncp -a build/ios/ioquake3.app/. \"${APP_OUT}/\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		AB0000080000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = FP9V6HP6Q2;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "i386 x86_64";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.action-games";
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.ioquake.ioquake3.ios;
+				PRODUCT_NAME = ioquake3;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		AB0000080000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = FP9V6HP6Q2;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "i386 x86_64";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.action-games";
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.ioquake.ioquake3.ios;
+				PRODUCT_NAME = ioquake3;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		AB00000B0000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		AB00000B0000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		AB0000090000000000000001 /* Build configuration list for PBXProject "ioquake3" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB00000B0000000000000001 /* Debug */,
+				AB00000B0000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AB00000A0000000000000001 /* Build configuration list for PBXNativeTarget "ioquake3" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB0000080000000000000001 /* Debug */,
+				AB0000080000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = AB0000070000000000000001 /* Project object */;
+}

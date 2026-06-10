@@ -32,6 +32,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <math.h>
 
 #include "../renderercommon/tr_common.h"
+#ifdef IOS
+#include "../client/cl_touch.h"
+#include "../ios/ios_layer.h"
+#endif
 #include "../sys/sys_local.h"
 #include "sdl_icon.h"
 
@@ -81,6 +85,29 @@ QGL_ARB_vertex_array_object_PROCS;
 QGL_EXT_direct_state_access_PROCS;
 #undef GLE
 
+#ifdef IOS
+static void GLimp_SyncIOSLayer( void )
+{
+	int pointsW = 0;
+	int pointsH = 0;
+	int drawableW = 0;
+	int drawableH = 0;
+	float scale = 1.0f;
+
+	if( !SDL_window )
+		return;
+
+	SDL_GetWindowSize( SDL_window, &pointsW, &pointsH );
+	SDL_GL_GetDrawableSize( SDL_window, &drawableW, &drawableH );
+
+	if( pointsW > 0 )
+		scale = (float)drawableW / (float)pointsW;
+
+	IOS_Layer_SyncScreen( drawableW, drawableH, scale );
+	IN_TouchSyncLayout( drawableW, drawableH, scale );
+}
+#endif
+
 /*
 ===============
 GLimp_Shutdown
@@ -89,6 +116,10 @@ GLimp_Shutdown
 void GLimp_Shutdown( void )
 {
 	ri.IN_Shutdown();
+
+#ifdef IOS
+	IOS_Layer_Shutdown();
+#endif
 
 	SDL_QuitSubSystem( SDL_INIT_VIDEO );
 }
@@ -1095,6 +1126,10 @@ void GLimp_Init( qboolean fixedFunction )
 
 	ri.Sys_GLimpInit( );
 
+#ifdef IOS
+	IOS_Layer_Init();
+#endif
+
 	// Create the window and set up the context
 	if(GLimp_StartDriverAndSetMode(r_mode->integer, r_fullscreen->integer, r_noborder->integer, fixedFunction))
 		goto success;
@@ -1172,6 +1207,10 @@ success:
 
 	// This depends on SDL_INIT_VIDEO, hence having it here
 	ri.IN_Init( SDL_window );
+
+#ifdef IOS
+	GLimp_SyncIOSLayer();
+#endif
 }
 
 
@@ -1221,5 +1260,9 @@ void GLimp_EndFrame( void )
 		}
 
 		r_fullscreen->modified = qfalse;
+
+#ifdef IOS
+		GLimp_SyncIOSLayer();
+#endif
 	}
 }

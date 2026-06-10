@@ -4,6 +4,10 @@ if(NOT APPLE)
     return()
 endif()
 
+if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    return()
+endif()
+
 option(BUILD_MACOS_APP "Deploy as a macOS .app" ON)
 
 enable_language(OBJC)

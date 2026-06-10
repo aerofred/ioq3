@@ -225,6 +225,7 @@ void GL_BindFramebuffer(GLenum target, GLuint framebuffer)
 			}
 			break;
 
+#if defined(GL_DRAW_FRAMEBUFFER) && GL_DRAW_FRAMEBUFFER != GL_FRAMEBUFFER
 		case GL_DRAW_FRAMEBUFFER:
 			if (framebuffer != glDsaState.drawFramebuffer)
 			{
@@ -232,7 +233,9 @@ void GL_BindFramebuffer(GLenum target, GLuint framebuffer)
 				glDsaState.drawFramebuffer = framebuffer;
 			}
 			break;
+#endif
 
+#if defined(GL_READ_FRAMEBUFFER) && GL_READ_FRAMEBUFFER != GL_FRAMEBUFFER
 		case GL_READ_FRAMEBUFFER:
 			if (framebuffer != glDsaState.readFramebuffer)
 			{
@@ -240,6 +243,7 @@ void GL_BindFramebuffer(GLenum target, GLuint framebuffer)
 				glDsaState.readFramebuffer = framebuffer;
 			}
 			break;
+#endif
 	}
 }
 

@@ -26,10 +26,319 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef __QGL_H__
 #define __QGL_H__
 
-#ifdef USE_INTERNAL_SDL_HEADERS
-#	include "SDL_opengl.h"
+#ifdef IOS
+#	ifdef USE_INTERNAL_SDL_HEADERS
+#		include "SDL_opengles2.h"
+#	else
+#		include <SDL_opengles2.h>
+#	endif
 #else
-#	include <SDL_opengl.h>
+#	ifdef USE_INTERNAL_SDL_HEADERS
+#		include "SDL_opengl.h"
+#	else
+#		include <SDL_opengl.h>
+#	endif
+#endif
+
+#ifndef APIENTRY
+#	ifdef GL_APIENTRY
+#		define APIENTRY GL_APIENTRY
+#	else
+#		define APIENTRY
+#	endif
+#endif
+
+#ifndef APIENTRYP
+#	ifdef GL_APIENTRYP
+#		define APIENTRYP GL_APIENTRYP
+#	else
+#		define APIENTRYP APIENTRY *
+#	endif
+#endif
+
+#if defined(IOS) && defined(GL_ES_VERSION_2_0)
+typedef double GLdouble;
+typedef double GLclampd;
+#endif
+
+#ifndef GL_RGB8
+#	ifdef GL_RGB8_OES
+#		define GL_RGB8 GL_RGB8_OES
+#	else
+#		define GL_RGB8 0x8051
+#	endif
+#endif
+
+#ifndef GL_RGBA8
+#	ifdef GL_RGBA8_OES
+#		define GL_RGBA8 GL_RGBA8_OES
+#	else
+#		define GL_RGBA8 0x8058
+#	endif
+#endif
+
+#ifndef GL_RGBA16
+#	ifdef GL_RGBA16_EXT
+#		define GL_RGBA16 GL_RGBA16_EXT
+#	else
+#		define GL_RGBA16 0x805B
+#	endif
+#endif
+
+#ifndef GL_RGB5
+#	define GL_RGB5 GL_RGB565
+#endif
+
+#ifndef GL_COMPRESSED_RGB_S3TC_DXT1_EXT
+#	define GL_COMPRESSED_RGB_S3TC_DXT1_EXT 0x83F0
+#endif
+
+#ifndef GL_COMPRESSED_RGBA_S3TC_DXT1_EXT
+#	define GL_COMPRESSED_RGBA_S3TC_DXT1_EXT 0x83F1
+#endif
+
+#ifndef GL_COMPRESSED_RGBA_S3TC_DXT3_EXT
+#	define GL_COMPRESSED_RGBA_S3TC_DXT3_EXT 0x83F2
+#endif
+
+#ifndef GL_COMPRESSED_RGBA_S3TC_DXT5_EXT
+#	define GL_COMPRESSED_RGBA_S3TC_DXT5_EXT 0x83F3
+#endif
+
+#ifndef GL_COMPRESSED_SRGB_S3TC_DXT1_EXT
+#	define GL_COMPRESSED_SRGB_S3TC_DXT1_EXT 0x8C4C
+#endif
+
+#ifndef GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT
+#	define GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT 0x8C4D
+#endif
+
+#ifndef GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT
+#	define GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT 0x8C4E
+#endif
+
+#ifndef GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT
+#	define GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT 0x8C4F
+#endif
+
+#ifndef GL_RGB4_S3TC
+#	define GL_RGB4_S3TC 0x83A1
+#endif
+
+#ifndef GL_RGBA16F
+#	define GL_RGBA16F GL_RGBA16F_ARB
+#endif
+
+#ifndef GL_LUMINANCE8
+#	define GL_LUMINANCE8 0x8040
+#endif
+
+#ifndef GL_LUMINANCE8_ALPHA8
+#	define GL_LUMINANCE8_ALPHA8 0x8045
+#endif
+
+#ifndef GL_SRGB8_EXT
+#	define GL_SRGB8_EXT 0x8C41
+#endif
+
+#ifndef GL_SLUMINANCE_EXT
+#	define GL_SLUMINANCE_EXT 0x8C46
+#endif
+
+#ifndef GL_SLUMINANCE8_EXT
+#	define GL_SLUMINANCE8_EXT 0x8C47
+#endif
+
+#ifndef GL_SLUMINANCE_ALPHA_EXT
+#	define GL_SLUMINANCE_ALPHA_EXT 0x8C44
+#endif
+
+#ifndef GL_SLUMINANCE8_ALPHA8_EXT
+#	define GL_SLUMINANCE8_ALPHA8_EXT 0x8C45
+#endif
+
+#ifndef GL_DEPTH_COMPONENT24
+#	define GL_DEPTH_COMPONENT24 0x81A6
+#endif
+
+#ifndef GL_DEPTH_COMPONENT32
+#	define GL_DEPTH_COMPONENT32 0x81A7
+#endif
+
+#ifndef GL_DEPTH_COMPONENT16_ARB
+#	ifdef GL_DEPTH_COMPONENT16
+#		define GL_DEPTH_COMPONENT16_ARB GL_DEPTH_COMPONENT16
+#	else
+#		define GL_DEPTH_COMPONENT16_ARB 0x81A5
+#	endif
+#endif
+
+#ifndef GL_DEPTH_COMPONENT24_ARB
+#	define GL_DEPTH_COMPONENT24_ARB GL_DEPTH_COMPONENT24
+#endif
+
+#ifndef GL_DEPTH_COMPONENT32_ARB
+#	define GL_DEPTH_COMPONENT32_ARB GL_DEPTH_COMPONENT32
+#endif
+
+#ifndef GL_TEXTURE_WRAP_R
+#	define GL_TEXTURE_WRAP_R 0x8072
+#endif
+
+#ifndef GL_DEPTH_TEXTURE_MODE
+#	define GL_DEPTH_TEXTURE_MODE 0x884B
+#endif
+
+#ifndef GL_TEXTURE_COMPARE_MODE
+#	define GL_TEXTURE_COMPARE_MODE 0x884C
+#endif
+
+#ifndef GL_TEXTURE_COMPARE_FUNC
+#	define GL_TEXTURE_COMPARE_FUNC 0x884D
+#endif
+
+#ifndef GL_COMPARE_R_TO_TEXTURE
+#	define GL_COMPARE_R_TO_TEXTURE 0x884E
+#endif
+
+#ifndef GL_R32F
+#	define GL_R32F 0x822E
+#endif
+
+#ifndef GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER
+#	define GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER 0x8CDB
+#endif
+
+#ifndef GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER
+#	define GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER 0x8CDC
+#endif
+
+#ifndef GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE
+#	define GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE 0x8D56
+#endif
+
+#ifndef GL_STENCIL_INDEX1
+#	define GL_STENCIL_INDEX1 0x8D46
+#endif
+
+#ifndef GL_STENCIL_INDEX4
+#	define GL_STENCIL_INDEX4 0x8D47
+#endif
+
+#ifndef GL_STENCIL_INDEX16
+#	define GL_STENCIL_INDEX16 0x8D49
+#endif
+
+#ifndef GL_DEPTH_STENCIL
+#	define GL_DEPTH_STENCIL 0x84F9
+#endif
+
+#ifndef GL_DEPTH24_STENCIL8
+#	define GL_DEPTH24_STENCIL8 0x88F0
+#endif
+
+#ifndef GL_TEXTURE_CUBE_MAP_POSITIVE_X_ARB
+#	define GL_TEXTURE_CUBE_MAP_POSITIVE_X_ARB GL_TEXTURE_CUBE_MAP_POSITIVE_X
+#endif
+
+#ifndef GL_MAX_SAMPLES
+#	define GL_MAX_SAMPLES 0x8D57
+#endif
+
+#ifndef GL_ANY_SAMPLES_PASSED
+#	define GL_ANY_SAMPLES_PASSED 0x8C2F
+#endif
+
+#ifndef GL_SAMPLES_PASSED
+#	define GL_SAMPLES_PASSED 0x8914
+#endif
+
+#ifndef GL_MAX_COLOR_ATTACHMENTS
+#	define GL_MAX_COLOR_ATTACHMENTS 0x8CDF
+#endif
+
+#ifndef GL_MAX_TEXTURE_UNITS_ARB
+#	ifdef GL_MAX_TEXTURE_IMAGE_UNITS
+#		define GL_MAX_TEXTURE_UNITS_ARB GL_MAX_TEXTURE_IMAGE_UNITS
+#	else
+#		define GL_MAX_TEXTURE_UNITS_ARB 0x8872
+#	endif
+#endif
+
+#ifndef GL_QUERY_RESULT
+#	ifdef GL_QUERY_RESULT_EXT
+#		define GL_QUERY_RESULT GL_QUERY_RESULT_EXT
+#	endif
+#endif
+
+#ifndef GL_QUERY_RESULT_AVAILABLE
+#	ifdef GL_QUERY_RESULT_AVAILABLE_EXT
+#		define GL_QUERY_RESULT_AVAILABLE GL_QUERY_RESULT_AVAILABLE_EXT
+#	endif
+#endif
+
+#ifndef GL_VERTEX_ARRAY_BINDING
+#	ifdef GL_VERTEX_ARRAY_BINDING_OES
+#		define GL_VERTEX_ARRAY_BINDING GL_VERTEX_ARRAY_BINDING_OES
+#	endif
+#endif
+
+#ifndef GL_MAX_VERTEX_UNIFORM_COMPONENTS
+#	ifdef GL_MAX_VERTEX_UNIFORM_VECTORS
+#		define GL_MAX_VERTEX_UNIFORM_COMPONENTS GL_MAX_VERTEX_UNIFORM_VECTORS
+#	endif
+#endif
+
+#ifndef GL_NUM_EXTENSIONS
+#	define GL_NUM_EXTENSIONS 0x821D
+#endif
+
+#ifndef GL_FRONT_AND_BACK
+#	define GL_FRONT_AND_BACK 0x0408
+#endif
+
+#ifndef GL_FILL
+#	define GL_FILL 0x1B02
+#endif
+
+#ifndef GL_STACK_OVERFLOW
+#	define GL_STACK_OVERFLOW 0x0503
+#endif
+
+#ifndef GL_STACK_UNDERFLOW
+#	define GL_STACK_UNDERFLOW 0x0504
+#endif
+
+#ifndef GL_DRAW_FRAMEBUFFER
+#	define GL_DRAW_FRAMEBUFFER GL_FRAMEBUFFER
+#endif
+
+#ifndef GL_READ_FRAMEBUFFER
+#	define GL_READ_FRAMEBUFFER GL_FRAMEBUFFER
+#endif
+
+#ifndef GL_BACK_LEFT
+#	define GL_BACK_LEFT GL_BACK
+#endif
+
+#ifndef GL_BACK_RIGHT
+#	define GL_BACK_RIGHT GL_BACK
+#endif
+
+#ifndef GL_LINE
+#	define GL_LINE 0x1B01
+#endif
+
+#ifndef GL_COLOR_ATTACHMENT0_EXT
+#	ifdef GL_COLOR_ATTACHMENT0
+#		define GL_COLOR_ATTACHMENT0_EXT GL_COLOR_ATTACHMENT0
+#	else
+#		define GL_COLOR_ATTACHMENT0_EXT 0x8CE0
+#	endif
+#endif
+
+#ifndef GL_STENCIL_INDEX
+#	define GL_STENCIL_INDEX 0x1901
 #endif
 
 extern void (APIENTRYP qglActiveTextureARB) (GLenum texture);
