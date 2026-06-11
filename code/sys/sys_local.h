@@ -57,6 +57,11 @@ char *Sys_BinaryPathRelative( const char *relative );
 char *Sys_StripAppBundle( char *pwd );
 #endif
 
+#ifdef IOS
+void Sys_SetNativeGamepadActive( qboolean active );
+qboolean Sys_NativeGamepadActive( void );
+#endif
+
 void Sys_GLimpSafeInit( void );
 void Sys_GLimpInit( void );
 void Sys_PlatformInit( void );

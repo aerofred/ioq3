@@ -152,6 +152,10 @@ typedef struct
 static nip_localaddr_t localIP[MAX_IPS];
 static int numIP;
 
+// Diagnostics for LAN discovery (visible on-device via the iOS overlay).
+int net_lanTxPackets = 0;
+int net_lanRxPackets = 0;
+
 
 //=============================================================================
 
@@ -1068,6 +1072,147 @@ void NET_LeaveMulticast6(void)
 
 /*
 ====================
+NET_SendPacketToLocalSubnets
+
+Send a packet to each local IPv4 subnet broadcast address.
+Directed broadcast is more reliable than 255.255.255.255 on iOS and some routers.
+====================
+*/
+void NET_SendPacketToLocalSubnets( netsrc_t sock, int length, const void *data, int port )
+{
+	int i;
+	netadr_t to;
+	struct sockaddr_in *addr4;
+	struct sockaddr_in *mask4;
+	unsigned int bcast;
+
+	for(i = 0; i < numIP; i++)
+	{
+		if(localIP[i].type != NA_IP)
+			continue;
+
+		addr4 = (struct sockaddr_in *)&localIP[i].addr;
+		mask4 = (struct sockaddr_in *)&localIP[i].netmask;
+
+		if(!mask4->sin_addr.s_addr)
+			continue;
+
+		bcast = (addr4->sin_addr.s_addr & mask4->sin_addr.s_addr) | ~mask4->sin_addr.s_addr;
+
+		if(bcast == INADDR_BROADCAST || bcast == 0)
+			continue;
+
+		to.type = NA_IP;
+		*(unsigned int *)&to.ip = bcast;
+		to.port = BigShort((short)port);
+
+		Com_DPrintf("LAN: probing subnet broadcast %s\n", NET_AdrToStringwPort(to));
+		NET_SendPacket(sock, length, data, to);
+	}
+}
+
+/*
+====================
+NET_SendUnicastLANProbe
+
+Send a packet to every individual host address of each local IPv4 subnet.
+
+On iOS (and on routers with AP/client isolation or that drop broadcast
+traffic) UDP broadcast is unreliable, but plain unicast works. Sweeping
+the subnet host-by-host guarantees the discovery request reaches every
+device on the LAN the same way a direct "connect by IP" does.
+====================
+*/
+void NET_SendUnicastLANProbe( netsrc_t sock, int length, const void *data, int basePort )
+{
+	int i, j;
+	netadr_t to;
+	struct sockaddr_in *addr4;
+	struct sockaddr_in *mask4;
+	unsigned int self, mask, net, hostcount, h, host;
+
+	Com_Memset(&to, 0, sizeof(to));
+	to.type = NA_IP;
+
+	for(i = 0; i < numIP; i++)
+	{
+		if(localIP[i].type != NA_IP)
+			continue;
+
+		addr4 = (struct sockaddr_in *)&localIP[i].addr;
+		mask4 = (struct sockaddr_in *)&localIP[i].netmask;
+
+		self = addr4->sin_addr.s_addr;
+		mask = mask4->sin_addr.s_addr;
+
+		if(!mask)
+			continue;
+
+		// skip loopback / link-local interfaces
+		if((self & 0xff) == 127)
+			continue;
+
+		net = self & mask;
+
+		// number of addresses in the subnet (host byte order)
+		hostcount = ntohl(~mask);
+
+		// Only sweep reasonably small subnets (up to a /22, ~1022 hosts)
+		// to avoid flooding large networks.
+		if(hostcount < 2 || hostcount > 1023)
+			continue;
+
+		for(h = 1; h < hostcount; h++)
+		{
+			host = htonl(ntohl(net) + h);
+
+			// don't probe ourselves
+			if(host == self)
+				continue;
+
+			*(unsigned int *)&to.ip = host;
+
+			for(j = 0; j < NUM_SERVER_PORTS; j++)
+			{
+				to.port = BigShort((short)(basePort + j));
+				NET_SendPacket(sock, length, data, to);
+				net_lanTxPackets++;
+			}
+		}
+	}
+}
+
+/*
+====================
+NET_BroadcastLANPacket
+
+Send a LAN discovery packet using global broadcast, directed subnet
+broadcasts, and IPv6 multicast.
+====================
+*/
+void NET_BroadcastLANPacket( netsrc_t sock, int length, const void *data, int basePort )
+{
+	netadr_t to;
+	int j;
+
+	Com_Memset(&to, 0, sizeof(to));
+
+	for(j = 0; j < NUM_SERVER_PORTS; j++)
+	{
+		to.port = BigShort((short)(basePort + j));
+
+		to.type = NA_BROADCAST;
+		NET_SendPacket(sock, length, data, to);
+
+		NET_SendPacketToLocalSubnets(sock, length, data, basePort + j);
+
+		to.type = NA_MULTICAST6;
+		NET_SendPacket(sock, length, data, to);
+	}
+}
+
+/*
+====================
 NET_OpenSocks
 ====================
 */
@@ -1276,7 +1421,7 @@ static void NET_AddLocalAddress(char *ifname, struct sockaddr *addr, struct sock
 }
 
 #if defined(__linux__) || defined(__APPLE__) || defined(__BSD__)
-static void NET_GetLocalAddress(void)
+static void NET_RefreshLocalAddressesInternal( void )
 {
 	struct ifaddrs *ifap, *search;
 
@@ -1288,18 +1433,34 @@ static void NET_GetLocalAddress(void)
 	{
 		for(search = ifap; search; search = search->ifa_next)
 		{
-			// Only add interfaces that are up.
-			if(ifap->ifa_flags & IFF_UP)
-				NET_AddLocalAddress(search->ifa_name, search->ifa_addr, search->ifa_netmask);
+			if(!search->ifa_addr || !search->ifa_netmask)
+				continue;
+			if(!(search->ifa_flags & IFF_UP))
+				continue;
+			if(search->ifa_flags & IFF_LOOPBACK)
+				continue;
+
+			NET_AddLocalAddress(search->ifa_name, search->ifa_addr, search->ifa_netmask);
 		}
-	
+
 		freeifaddrs(ifap);
-		
+
 		Sys_ShowIP();
 	}
 }
+
+int NET_RefreshLocalAddresses( void )
+{
+	NET_RefreshLocalAddressesInternal();
+	return numIP;
+}
+
+static void NET_GetLocalAddress(void)
+{
+	NET_RefreshLocalAddressesInternal();
+}
 #else
-static void NET_GetLocalAddress( void ) {
+static void NET_RefreshLocalAddressesInternal( void ) {
 	char				hostname[256];
 	struct addrinfo	hint;
 	struct addrinfo	*res = NULL;
@@ -1347,7 +1508,82 @@ static void NET_GetLocalAddress( void ) {
 	if(res)
 		freeaddrinfo(res);
 }
+
+int NET_RefreshLocalAddresses( void )
+{
+	NET_RefreshLocalAddressesInternal();
+	return numIP;
+}
+
+static void NET_GetLocalAddress( void ) {
+	NET_RefreshLocalAddressesInternal();
+}
 #endif
+
+/*
+==================
+NET_GetLocalIPv4String
+
+Return the best local IPv4 address for LAN play (Wi-Fi en0 preferred).
+==================
+*/
+const char *NET_GetLocalIPv4String( char *buf, int buflen )
+{
+	int i;
+	int best;
+	int bestScore;
+	struct sockaddr_in *sin;
+	unsigned char *ip;
+
+	if ( !buf || buflen < 1 )
+		return "";
+
+	best = -1;
+	bestScore = -1;
+
+	NET_RefreshLocalAddresses();
+
+	for ( i = 0; i < numIP; i++ )
+	{
+		int score;
+
+		if ( localIP[i].type != NA_IP )
+			continue;
+
+		sin = (struct sockaddr_in *)&localIP[i].addr;
+		ip = (unsigned char *)&sin->sin_addr.s_addr;
+
+		if ( ip[0] == 127 )
+			continue;
+		if ( ip[0] == 169 && ip[1] == 254 )
+			continue;
+
+		score = 1;
+		if ( !Q_stricmp( localIP[i].ifname, "en0" ) )
+			score = 100;
+		else if ( localIP[i].ifname[0] == 'e' && localIP[i].ifname[1] == 'n' )
+			score = 50;
+		if ( ip[0] == 192 && ip[1] == 168 )
+			score += 30;
+		else if ( ip[0] == 10 )
+			score += 20;
+
+		if ( score > bestScore )
+		{
+			bestScore = score;
+			best = i;
+		}
+	}
+
+	if ( best < 0 )
+	{
+		Q_strncpyz( buf, "N/A", buflen );
+		return buf;
+	}
+
+	Sys_SockaddrToString( buf, buflen, (struct sockaddr *)&localIP[best].addr );
+	return buf;
+}
 
 /*
 ====================
@@ -1635,6 +1871,8 @@ void NET_Event(fd_set *fdr)
 
 		if(NET_GetPacket(&from, &netmsg, fdr))
 		{
+			net_lanRxPackets++;
+
 			if(net_dropsim->value > 0.0f && net_dropsim->value <= 100.0f)
 			{
 				// com_dropsim->value percent of incoming packets get dropped.

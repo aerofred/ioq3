@@ -384,6 +384,29 @@ void CL_JoystickEvent( int axis, int value, int time ) {
 	cl.joystickAxis[axis] = value;
 }
 
+void CL_ExecuteConsole( const char *text ) {
+	size_t len;
+
+	if ( !text || !text[0] ) {
+		return;
+	}
+
+	Cbuf_AddText( text );
+	len = strlen( text );
+	if ( len == 0 || text[len - 1] != '\n' ) {
+		Cbuf_AddText( "\n" );
+	}
+	Cbuf_Execute();
+}
+
+int CL_GetCvarInt( const char *name ) {
+	return Cvar_VariableIntegerValue( name );
+}
+
+float CL_GetCvarFloat( const char *name ) {
+	return Cvar_VariableValue( name );
+}
+
 /*
 =================
 CL_JoystickMove

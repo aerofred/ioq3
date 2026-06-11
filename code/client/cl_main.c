@@ -27,6 +27,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../sys/sys_local.h"
 #include "../sys/sys_loadlib.h"
 
+#ifdef IOS
+#include "../ios/ios_numpad.h"
+static void CL_IOS_LANScanTick( void );
+void CL_UI_SetLocalIP_f( void );
+void CL_IOS_NumpadShow_f( void );
+void CL_IOS_NumpadHide_f( void );
+#endif
+
 #ifdef USE_MUMBLE
 #include "libmumblelink.h"
 #endif
@@ -3108,6 +3116,10 @@ void CL_Frame ( int msec ) {
 
 	Con_RunConsole();
 
+#ifdef IOS
+	CL_IOS_LANScanTick();
+#endif
+
 	cls.framecount++;
 }
 
@@ -3732,6 +3744,11 @@ void CL_Init( void ) {
 	Cmd_AddCommand ("ping", CL_Ping_f );
 	Cmd_AddCommand ("serverstatus", CL_ServerStatus_f );
 	Cmd_AddCommand ("showip", CL_ShowIP_f );
+	Cmd_AddCommand ("ui_set_localip", CL_UI_SetLocalIP_f );
+#ifdef IOS
+	Cmd_AddCommand ("ios_numpad_show", CL_IOS_NumpadShow_f );
+	Cmd_AddCommand ("ios_numpad_hide", CL_IOS_NumpadHide_f );
+#endif
 	Cmd_AddCommand ("fs_openedList", CL_OpenedPK3List_f );
 	Cmd_AddCommand ("fs_referencedList", CL_ReferencedPK3List_f );
 	Cmd_AddCommand ("model", CL_SetModel_f );
@@ -4178,10 +4195,12 @@ CL_LocalServers_f
 */
 void CL_LocalServers_f( void ) {
 	char		*message;
-	int			i, j;
-	netadr_t	to;
+	int			i;
+	int			localAddrs;
 
-	Com_Printf( "Scanning for servers on the local network...\n");
+	localAddrs = NET_RefreshLocalAddresses();
+
+	Com_Printf( "Scanning for servers on the local network (%i local address(es))...\n", localAddrs );
 
 	// reset the list, waiting for response
 	cls.numlocalservers = 0;
@@ -4192,7 +4211,6 @@ void CL_LocalServers_f( void ) {
 		Com_Memset(&cls.localServers[i], 0, sizeof(cls.localServers[i]));
 		cls.localServers[i].visible = b;
 	}
-	Com_Memset( &to, 0, sizeof( to ) );
 
 	// The 'xxx' in the message is a challenge that will be echoed back
 	// by the server.  We don't care about that here, but master servers
@@ -4201,18 +4219,13 @@ void CL_LocalServers_f( void ) {
 
 	// send each message twice in case one is dropped
 	for ( i = 0 ; i < 2 ; i++ ) {
-		// send a broadcast packet on each server port
-		// we support multiple server ports so a single machine
-		// can nicely run multiple servers
-		for ( j = 0 ; j < NUM_SERVER_PORTS ; j++ ) {
-			to.port = BigShort( (short)(PORT_SERVER + j) );
-
-			to.type = NA_BROADCAST;
-			NET_SendPacket( NS_CLIENT, strlen( message ), message, to );
-			to.type = NA_MULTICAST6;
-			NET_SendPacket( NS_CLIENT, strlen( message ), message, to );
-		}
+		NET_BroadcastLANPacket( NS_CLIENT, strlen( message ), message, PORT_SERVER );
 	}
+
+	// Broadcast is unreliable on iOS and on routers with AP isolation, so
+	// also probe every host on the local subnet directly with unicast,
+	// which is delivered the same way a direct "connect by IP" is.
+	NET_SendUnicastLANProbe( NS_CLIENT, strlen( message ), message, PORT_SERVER );
 }
 
 /*
@@ -4691,6 +4704,58 @@ CL_ShowIP_f
 void CL_ShowIP_f(void) {
 	Sys_ShowIP();
 }
+
+void CL_UI_SetLocalIP_f(void) {
+	char buf[64];
+
+	NET_GetLocalIPv4String( buf, sizeof( buf ) );
+	Cvar_Set( "ui_sv_localip", buf );
+}
+
+#ifdef IOS
+void CL_IOS_NumpadShow_f( void ) {
+	IOS_Numpad_Show();
+}
+
+void CL_IOS_NumpadHide_f( void ) {
+	IOS_Numpad_Hide();
+}
+
+/*
+==================
+CL_IOS_LANScanTick
+
+Keep probing the LAN while the UI menu is open.
+==================
+*/
+extern int net_lanTxPackets;
+extern int net_lanRxPackets;
+
+static void CL_IOS_LANScanTick( void ) {
+	static int lastLanScanTime;
+	char ipbuf[64];
+	char dbg[256];
+	int ifaces;
+
+	if ( !( Key_GetCatcher() & KEYCATCH_UI ) ) {
+		return;
+	}
+
+	if ( cls.realtime - lastLanScanTime < 2000 ) {
+		return;
+	}
+
+	lastLanScanTime = cls.realtime;
+	CL_LocalServers_f();
+
+	ifaces = NET_RefreshLocalAddresses();
+	NET_GetLocalIPv4String( ipbuf, sizeof( ipbuf ) );
+
+	Com_sprintf( dbg, sizeof( dbg ), "if=%i ip=%s tx=%i rx=%i found=%i",
+		ifaces, ipbuf, net_lanTxPackets, net_lanRxPackets, cls.numlocalservers );
+	Cvar_Set( "ui_lan_debug", dbg );
+}
+#endif
 
 /*
 =================

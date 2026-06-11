@@ -34,10 +34,13 @@ set(CLIENT_SOURCES
     ${SOURCE_DIR}/client/snd_codec_opus.c
     ${SOURCE_DIR}/client/qal.c
     ${SOURCE_DIR}/client/snd_openal.c
-    ${SOURCE_DIR}/sdl/sdl_input.c
     ${SOURCE_DIR}/sdl/sdl_snd.c
     ${CLIENT_PLATFORM_SOURCES}
 )
+
+if(NOT (IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS"))
+    list(APPEND CLIENT_SOURCES ${SOURCE_DIR}/sdl/sdl_input.c)
+endif()
 
 add_git_dependency(${SOURCE_DIR}/client/cl_console.c)
 

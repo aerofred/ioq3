@@ -179,6 +179,10 @@ qboolean	NET_GetLoopPacket (netsrc_t sock, netadr_t *net_from, msg_t *net_messag
 void		NET_JoinMulticast6(void);
 void		NET_LeaveMulticast6(void);
 void		NET_Sleep(int msec);
+int		NET_RefreshLocalAddresses( void );
+const char	*NET_GetLocalIPv4String( char *buf, int buflen );
+void		NET_BroadcastLANPacket( netsrc_t sock, int length, const void *data, int basePort );
+void		NET_SendUnicastLANProbe( netsrc_t sock, int length, const void *data, int basePort );
 
 
 #define	MAX_MSGLEN				16384		// max length of a message, which may

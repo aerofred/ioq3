@@ -76,6 +76,7 @@ static void SpecifyServer_Event( void* ptr, int event )
 			if (event != QM_ACTIVATED)
 				break;
 
+			trap_Cmd_ExecuteText( EXEC_APPEND, "ios_numpad_hide\n" );
 			if (s_specifyserver.domain.field.buffer[0])
 			{
 				strcpy(buff,s_specifyserver.domain.field.buffer);
@@ -90,6 +91,7 @@ static void SpecifyServer_Event( void* ptr, int event )
 			if (event != QM_ACTIVATED)
 				break;
 
+			trap_Cmd_ExecuteText( EXEC_APPEND, "ios_numpad_hide\n" );
 			UI_PopMenu();
 			break;
 	}
@@ -208,6 +210,7 @@ UI_SpecifyServerMenu
 void UI_SpecifyServerMenu( void )
 {
 	SpecifyServer_MenuInit();
+	trap_Cmd_ExecuteText( EXEC_APPEND, "ios_numpad_show\n" );
 	UI_PushMenu( &s_specifyserver.menu );
 }
 
