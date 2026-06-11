@@ -21,6 +21,11 @@ echo "Copying baseq3 -> ${DEST}/"
 rm -rf "${DEST}/baseq3"
 cp -R "${ROOT_DIR}/baseq3" "${DEST}/"
 
+if [ -f "${SCRIPT_DIR}/q3config.cfg" ]; then
+	echo "Installing q3config.cfg -> ${DEST}/baseq3/"
+	cp -f "${SCRIPT_DIR}/q3config.cfg" "${DEST}/baseq3/q3config.cfg"
+fi
+
 VM_SRC=""
 for candidate in \
 	"${ROOT_DIR}/build/host-qvms/Release/baseq3/vm" \
