@@ -113,7 +113,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
-			shellScript = "set -e\ncd \"${SRCROOT}/../..\"\nchmod +x misc/ios/build-ios.sh misc/ios/copy_game_data.sh misc/ios/generate_app_icon.sh misc/ios/setup_sdl2.sh\nif [ ! -f misc/ios/sdl2-build/libSDL2-ios.a ]; then\n  misc/ios/setup_sdl2.sh\nfi\nmisc/ios/build-ios.sh\nAPP_OUT=\"${BUILT_PRODUCTS_DIR}/${WRAPPER_NAME}\"\nrm -rf \"${APP_OUT}\"\nmkdir -p \"${APP_OUT}\"\ncp -a build/ios/ioquake3.app/. \"${APP_OUT}/\"\n";
+			shellScript = "set -e\ncd \"${SRCROOT}/../..\"\nchmod +x misc/ios/build-ios.sh misc/ios/copy_game_data.sh misc/ios/generate_app_icon.sh misc/ios/setup_sdl2.sh\nif [ ! -f misc/ios/sdl2-build/libSDL2-ios.a ]; then\n  misc/ios/setup_sdl2.sh\nfi\nmisc/ios/build-ios.sh\nAPP_OUT=\"${BUILT_PRODUCTS_DIR}/${WRAPPER_NAME}\"\nrm -rf \"${APP_OUT}\"\nmkdir -p \"${APP_OUT}\"\ncp -a build/ios/ioquake3.app/. \"${APP_OUT}/\"\nmisc/ios/generate_app_icon.sh \"${APP_OUT}\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

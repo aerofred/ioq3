@@ -28,12 +28,8 @@ typedef struct iosTouchOverlayState_s
 	qboolean crouchActive;
 	float useX, useY, useRadius;
 	qboolean useActive;
-	float reloadX, reloadY, reloadRadius;
-	qboolean reloadActive;
 	float openX, openY, openRadius;
 	qboolean openActive;
-	float buyX, buyY, buyRadius;
-	qboolean buyActive;
 	float weaponX, weaponY, weaponRadius;
 	float menuX, menuY, menuRadius;
 	float configX, configY, configRadius;
@@ -317,12 +313,8 @@ static CGRect IOS_RectFromPixelCenter( float x, float y, float radius, CGFloat f
 		@"CRCH", [UIColor colorWithRed:0.12 green:0.50 blue:0.74 alpha:1.0], iosTouchOverlay.crouchActive );
 	drawButton( iosTouchOverlay.useX, iosTouchOverlay.useY, iosTouchOverlay.useRadius,
 		@"USE", [UIColor colorWithRed:0.88 green:0.54 blue:0.16 alpha:1.0], iosTouchOverlay.useActive );
-	drawButton( iosTouchOverlay.reloadX, iosTouchOverlay.reloadY, iosTouchOverlay.reloadRadius,
-		@"WPN-", [UIColor colorWithRed:0.86 green:0.66 blue:0.18 alpha:1.0], iosTouchOverlay.reloadActive );
 	drawButton( iosTouchOverlay.openX, iosTouchOverlay.openY, iosTouchOverlay.openRadius,
 		@"ZOOM", [UIColor colorWithRed:0.76 green:0.46 blue:0.20 alpha:1.0], iosTouchOverlay.openActive );
-	drawButton( iosTouchOverlay.buyX, iosTouchOverlay.buyY, iosTouchOverlay.buyRadius,
-		@"WPN+", [UIColor colorWithRed:0.18 green:0.62 blue:0.38 alpha:1.0], iosTouchOverlay.buyActive );
 	drawButton( iosTouchOverlay.weaponX, iosTouchOverlay.weaponY, iosTouchOverlay.weaponRadius,
 		@"WPN", [UIColor colorWithRed:0.90 green:0.72 blue:0.18 alpha:1.0], iosTouchOverlay.mode == 1 );
 	drawButton( iosTouchOverlay.menuX, iosTouchOverlay.menuY, iosTouchOverlay.menuRadius,
@@ -471,9 +463,7 @@ void IOS_Layer_UpdateTouchControls( qboolean visible, float opacity, int mode,
 	float jumpX, float jumpY, float jumpRadius, qboolean jumpActive,
 	float crouchX, float crouchY, float crouchRadius, qboolean crouchActive,
 	float useX, float useY, float useRadius, qboolean useActive,
-	float reloadX, float reloadY, float reloadRadius, qboolean reloadActive,
 	float openX, float openY, float openRadius, qboolean openActive,
-	float buyX, float buyY, float buyRadius, qboolean buyActive,
 	float weaponX, float weaponY, float weaponRadius,
 	float menuX, float menuY, float menuRadius,
 	float configX, float configY, float configRadius, qboolean configActive,
@@ -511,18 +501,10 @@ void IOS_Layer_UpdateTouchControls( qboolean visible, float opacity, int mode,
 	iosTouchOverlay.useY = useY;
 	iosTouchOverlay.useRadius = useRadius;
 	iosTouchOverlay.useActive = useActive;
-	iosTouchOverlay.reloadX = reloadX;
-	iosTouchOverlay.reloadY = reloadY;
-	iosTouchOverlay.reloadRadius = reloadRadius;
-	iosTouchOverlay.reloadActive = reloadActive;
 	iosTouchOverlay.openX = openX;
 	iosTouchOverlay.openY = openY;
 	iosTouchOverlay.openRadius = openRadius;
 	iosTouchOverlay.openActive = openActive;
-	iosTouchOverlay.buyX = buyX;
-	iosTouchOverlay.buyY = buyY;
-	iosTouchOverlay.buyRadius = buyRadius;
-	iosTouchOverlay.buyActive = buyActive;
 	iosTouchOverlay.weaponX = weaponX;
 	iosTouchOverlay.weaponY = weaponY;
 	iosTouchOverlay.weaponRadius = weaponRadius;
@@ -556,8 +538,8 @@ void IOS_Layer_HideTouchControls( int mode )
 	IOS_Layer_UpdateTouchControls( qfalse, 0.0f, mode,
 		0, 0, 0, qfalse, 0, 0, 0, qfalse,
 		0, 0, 0, qfalse, 0, 0, 0, qfalse,
-		0, 0, 0, qfalse, 0, 0, 0, qfalse, 0, 0, 0, qfalse, 0, 0, 0, qfalse,
-		0, 0, 0, qfalse, 0, 0, 0, qfalse,
+		0, 0, 0, qfalse, 0, 0, 0, qfalse, 0, 0, 0, qfalse,
+		0, 0, 0, qfalse,
 		0, 0, 0,
 		0, 0, 0,
 		0, 0, 0, qfalse,
@@ -570,8 +552,8 @@ void IOS_Layer_UpdateTouchControlsGamepadOnly( float opacity, int mode,
 	IOS_Layer_UpdateTouchControls( qtrue, opacity, mode,
 		0, 0, 0, qfalse, 0, 0, 0, qfalse,
 		0, 0, 0, qfalse, 0, 0, 0, qfalse,
-		0, 0, 0, qfalse, 0, 0, 0, qfalse, 0, 0, 0, qfalse, 0, 0, 0, qfalse,
-		0, 0, 0, qfalse, 0, 0, 0, qfalse,
+		0, 0, 0, qfalse, 0, 0, 0, qfalse, 0, 0, 0, qfalse,
+		0, 0, 0, qfalse,
 		0, 0, 0,
 		0, 0, 0,
 		configX, configY, configRadius, configActive,
