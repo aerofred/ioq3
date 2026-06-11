@@ -196,6 +196,12 @@ static void InitOpenGL( void )
 		
 		GLimp_Init( qtrue );
 
+#ifdef USE_GLES_FIXED
+		if ( qglesMajorVersion >= 1 && !r_primitives->integer ) {
+			ri.Cvar_Set( "r_primitives", "2" );
+		}
+#endif
+
 		// OpenGL driver constants
 		qglGetIntegerv( GL_MAX_TEXTURE_SIZE, &temp );
 		glConfig.maxTextureSize = temp;
@@ -1092,7 +1098,11 @@ void R_Register( void )
 	r_railCoreWidth = ri.Cvar_Get( "r_railCoreWidth", "6", CVAR_ARCHIVE );
 	r_railSegmentLength = ri.Cvar_Get( "r_railSegmentLength", "32", CVAR_ARCHIVE );
 
+#ifdef USE_GLES_FIXED
+	r_primitives = ri.Cvar_Get( "r_primitives", "2", CVAR_ARCHIVE );
+#else
 	r_primitives = ri.Cvar_Get( "r_primitives", "0", CVAR_ARCHIVE );
+#endif
 
 	r_ambientScale = ri.Cvar_Get( "r_ambientScale", "0.6", CVAR_CHEAT );
 	r_directedScale = ri.Cvar_Get( "r_directedScale", "1", CVAR_CHEAT );

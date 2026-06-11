@@ -1,4 +1,5 @@
 #include "ios_layer.h"
+#include "../client/cl_touch.h"
 
 #import <UIKit/UIKit.h>
 
@@ -152,7 +153,7 @@ static void IOS_EnsureTouchOverlay( void )
 		iosTouchView.backgroundColor = UIColor.clearColor;
 		iosTouchView.opaque = NO;
 		iosTouchView.multipleTouchEnabled = YES;
-		iosTouchView.userInteractionEnabled = NO;
+		iosTouchView.userInteractionEnabled = YES;
 		vc.view = iosTouchView;
 		iosTouchWindow.rootViewController = vc;
 		[iosTouchWindow setHidden:NO];
@@ -246,6 +247,45 @@ static void IOS_EnsureTouchOverlay( void )
 		CGContextFillEllipseInRect( ctx, CGRectMake( knobX - 10.0, y - 10.0, 20.0, 20.0 ) );
 	}
 }
+
+- (void)forwardTouches:(NSSet<UITouch *> *)touches down:(BOOL)down motion:(BOOL)motion
+{
+	CGRect bounds = self.bounds;
+
+	for( UITouch *touch in touches )
+	{
+		CGPoint p = [touch locationInView:self];
+		float nx = bounds.size.width > 0.0 ? (float)( p.x / bounds.size.width ) : 0.0f;
+		float ny = bounds.size.height > 0.0 ? (float)( p.y / bounds.size.height ) : 0.0f;
+
+		IN_TouchFinger( (long long)(uintptr_t)touch, nx, ny, down ? qtrue : qfalse, motion ? qtrue : qfalse );
+	}
+}
+
+- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
+{
+	(void)event;
+	[self forwardTouches:touches down:YES motion:NO];
+}
+
+- (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
+{
+	(void)event;
+	[self forwardTouches:touches down:YES motion:YES];
+}
+
+- (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
+{
+	(void)event;
+	[self forwardTouches:touches down:NO motion:NO];
+}
+
+- (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
+{
+	(void)event;
+	[self forwardTouches:touches down:NO motion:NO];
+}
+
 @end
 
 void IOS_Layer_SetActive( qboolean active )

@@ -62,19 +62,24 @@ Adjusted for resolution and screen aspect ratio
 void SCR_AdjustFrom640( float *x, float *y, float *w, float *h ) {
 	float	xscale;
 	float	yscale;
+	float	xbias;
 
-#if 0
-		// adjust for wide screens
-		if ( cls.glconfig.vidWidth * 480 > cls.glconfig.vidHeight * 640 ) {
-			*x += 0.5 * ( cls.glconfig.vidWidth - ( cls.glconfig.vidHeight * 640 / 480 ) );
-		}
-#endif
-
-	// scale for screen sizes
+#ifdef IOS
+	// Keep 4:3 HUD proportions on widescreen (native resolution, no horizontal stretch).
+	yscale = cls.glconfig.vidHeight / 480.0;
+	xscale = yscale;
+	xbias = 0.5f * ( cls.glconfig.vidWidth - 640.0f * xscale );
+	if ( xbias < 0.0f ) {
+		xbias = 0.0f;
+	}
+#else
+	xbias = 0.0f;
 	xscale = cls.glconfig.vidWidth / 640.0;
 	yscale = cls.glconfig.vidHeight / 480.0;
+#endif
+
 	if ( x ) {
-		*x *= xscale;
+		*x = *x * xscale + xbias;
 	}
 	if ( y ) {
 		*y *= yscale;

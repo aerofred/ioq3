@@ -1,21 +1,22 @@
 /*
 ===========================================================================
 Copyright (C) 1999-2005 Id Software, Inc.
+Copyright (C) 2005-2010 Smokin' Guns
 
-This file is part of Quake III Arena source code.
+This file is part of Smokin' Guns.
 
-Quake III Arena source code is free software; you can redistribute it
+Smokin' Guns is free software; you can redistribute it
 and/or modify it under the terms of the GNU General Public License as
 published by the Free Software Foundation; either version 2 of the License,
 or (at your option) any later version.
 
-Quake III Arena source code is distributed in the hope that it will be
+Smokin' Guns is distributed in the hope that it will be
 useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Quake III Arena source code; if not, write to the Free Software
+along with Smokin' Guns; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
@@ -130,11 +131,11 @@ void GL_Cull( int cullType ) {
 
 	glState.faceCulling = cullType;
 
-	if ( cullType == CT_TWO_SIDED ) 
+	if ( cullType == CT_TWO_SIDED )
 	{
 		qglDisable( GL_CULL_FACE );
-	} 
-	else 
+	}
+	else
 	{
 		qboolean cullFront;
 		qglEnable( GL_CULL_FACE );
@@ -401,9 +402,9 @@ static void SetViewportAndScissor( void ) {
 	qglMatrixMode(GL_MODELVIEW);
 
 	// set the window clipping
-	qglViewport( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY, 
+	qglViewport( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY,
 		backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
-	qglScissor( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY, 
+	qglScissor( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY,
 		backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
 }
 
@@ -474,7 +475,7 @@ void RB_BeginDrawingView (void) {
 	// clip to the plane of the portal
 	if ( backEnd.viewParms.isPortal ) {
 		float	plane[4];
-		GLdouble	plane2[4];
+		double	plane2[4];
 
 		plane[0] = backEnd.viewParms.portalPlane.normal[0];
 		plane[1] = backEnd.viewParms.portalPlane.normal[1];
@@ -495,6 +496,8 @@ void RB_BeginDrawingView (void) {
 }
 
 
+#define	MAC_EVENT_PUMP_MSEC		5
+
 /*
 ==================
 RB_RenderDrawSurfList
@@ -509,7 +512,7 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	int				i;
 	drawSurf_t		*drawSurf;
 	int				oldSort;
-	double			originalTime;
+	float			originalTime;
 
 	// save original time for entity shader offsets
 	originalTime = backEnd.refdef.floatTime;
@@ -531,17 +534,17 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	backEnd.pc.c_surfaces += numDrawSurfs;
 
 	for (i = 0, drawSurf = drawSurfs ; i < numDrawSurfs ; i++, drawSurf++) {
-		if ( drawSurf->sort == (unsigned)oldSort ) {
+		if ( drawSurf->sort == oldSort ) {
 			// fast path, same as previous sort
 			rb_surfaceTable[ *drawSurf->surface ]( drawSurf->surface );
 			continue;
 		}
-		oldSort = (int)drawSurf->sort;
+		oldSort = drawSurf->sort;
 		R_DecomposeSort( drawSurf->sort, &entityNum, &shader, &fogNum, &dlighted );
 
 		//
 		// change the tess parameters if needed
-		// a "entityMergable" shader is a shader that can have surfaces from separate
+		// a "entityMergable" shader is a shader that can have surfaces from seperate
 		// entities merged into a single batch, like smoke and blood puff sprites
 		if ( shader != NULL && ( shader != oldShader || fogNum != oldFogNum || dlighted != oldDlighted 
 			|| ( entityNum != oldEntityNum && !shader->entityMergable ) ) ) {
@@ -562,10 +565,7 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 
 			if ( entityNum != REFENTITYNUM_WORLD ) {
 				backEnd.currentEntity = &backEnd.refdef.entities[entityNum];
-
-				// FIXME: e.shaderTime must be passed as int to avoid fp-precision loss issues
-				backEnd.refdef.floatTime = originalTime - (double)backEnd.currentEntity->e.shaderTime;
-
+				backEnd.refdef.floatTime = originalTime - backEnd.currentEntity->e.shaderTime;
 				// we have to reset the shaderTime as well otherwise image animations start
 				// from the wrong frame
 				tess.shaderTime = backEnd.refdef.floatTime - tess.shader->timeOffset;
@@ -582,7 +582,7 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 				{
 					// hack the depth range to prevent view model from poking into walls
 					depthRange = qtrue;
-					
+
 					if(backEnd.currentEntity->e.renderfx & RF_CROSSHAIR)
 						isCrosshair = qtrue;
 				}
@@ -670,11 +670,11 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	}
 
 	if (r_drawSun->integer) {
-		RB_DrawSun(0.1f, tr.sunShader);
+		RB_DrawSun(0.1, tr.sunShader);
 	}
 
 	// darken down any stencil shadows
-	RB_ShadowFinish();		
+	RB_ShadowFinish();
 
 	// add light flares on lights that aren't obscured
 	RB_RenderFlares();
@@ -711,14 +711,53 @@ void	RB_SetGL2D (void) {
 			  GLS_SRCBLEND_SRC_ALPHA |
 			  GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA );
 
-	GL_Cull( CT_TWO_SIDED );
+	qglDisable( GL_CULL_FACE );
 	qglDisable( GL_CLIP_PLANE0 );
 
 	// set time for 2D shaders
 	backEnd.refdef.time = ri.Milliseconds();
-	backEnd.refdef.floatTime = backEnd.refdef.time * 0.001;
+	backEnd.refdef.floatTime = backEnd.refdef.time * 0.001f;
 }
 
+/*
+================
+RB_InstantQuad2
+================
+*/
+void RB_InstantQuad2( vec4_t quadVerts[4], vec2_t texCoords[4] ) {
+	glIndex_t indexes[6];
+
+	qglDisableClientState( GL_COLOR_ARRAY );
+	qglEnableClientState( GL_TEXTURE_COORD_ARRAY );
+
+	qglTexCoordPointer( 2, GL_FLOAT, 0, texCoords );
+	qglVertexPointer( 3, GL_FLOAT, 16, quadVerts );
+
+	indexes[0] = 0;
+	indexes[1] = 1;
+	indexes[2] = 2;
+	indexes[3] = 0;
+	indexes[4] = 2;
+	indexes[5] = 3;
+
+	R_DrawElements( 6, indexes );
+}
+
+/*
+================
+RB_InstantQuad
+================
+*/
+void RB_InstantQuad( vec4_t quadVerts[4] ) {
+	vec2_t texCoords[4] = {
+		{ 0, 0 },
+		{ 1, 0 },
+		{ 1, 1 },
+		{ 0, 1 }
+	};
+
+	RB_InstantQuad2( quadVerts, texCoords );
+}
 
 /*
 =============
@@ -732,17 +771,24 @@ Used for cinematics.
 void RE_StretchRaw (int x, int y, int w, int h, int cols, int rows, const byte *data, int client, qboolean dirty) {
 	int			i, j;
 	int			start, end;
+	vec4_t		quadVerts[4];
+	vec2_t		texCoords[4];
 
 	if ( !tr.registered ) {
 		return;
 	}
 	R_IssuePendingRenderCommands();
 
+#ifdef FRAMEBUFFER_AND_GLSL_SUPPORT
+	// Needed here to support cinematics
+	R_FrameBuffer_EndFrame();
+#endif
+
 	if ( tess.numIndexes ) {
 		RB_EndSurface();
 	}
 
-	// we definitely want to sync every frame for the cinematics
+	// we definately want to sync every frame for the cinematics
 	qglFinish();
 
 	start = 0;
@@ -759,31 +805,33 @@ void RE_StretchRaw (int x, int y, int w, int h, int cols, int rows, const byte *
 		ri.Error (ERR_DROP, "Draw_StretchRaw: size not a power of 2: %i by %i", cols, rows);
 	}
 
-	RE_UploadCinematic (w, h, cols, rows, data, client, dirty);
-	GL_Bind( tr.scratchImage[client] );
+	RE_UploadCinematic( w, h, cols, rows, data, client, dirty );
 
 	if ( r_speeds->integer ) {
 		end = ri.Milliseconds();
 		ri.Printf( PRINT_ALL, "qglTexSubImage2D %i, %i: %i msec\n", cols, rows, end - start );
 	}
+	GL_Bind( tr.scratchImage[client] );
 
 	RB_SetGL2D();
 
 	qglColor3f( tr.identityLight, tr.identityLight, tr.identityLight );
 
-	qglBegin (GL_QUADS);
-	qglTexCoord2f ( 0.5f / cols,  0.5f / rows );
-	qglVertex2f (x, y);
-	qglTexCoord2f ( ( cols - 0.5f ) / cols ,  0.5f / rows );
-	qglVertex2f (x+w, y);
-	qglTexCoord2f ( ( cols - 0.5f ) / cols, ( rows - 0.5f ) / rows );
-	qglVertex2f (x+w, y+h);
-	qglTexCoord2f ( 0.5f / cols, ( rows - 0.5f ) / rows );
-	qglVertex2f (x, y+h);
-	qglEnd ();
+	quadVerts[0][0] = x;     quadVerts[0][1] = y;     quadVerts[0][2] = 0.0f; quadVerts[0][3] = 1.0f;
+	quadVerts[1][0] = x + w; quadVerts[1][1] = y;     quadVerts[1][2] = 0.0f; quadVerts[1][3] = 1.0f;
+	quadVerts[2][0] = x + w; quadVerts[2][1] = y + h; quadVerts[2][2] = 0.0f; quadVerts[2][3] = 1.0f;
+	quadVerts[3][0] = x;     quadVerts[3][1] = y + h; quadVerts[3][2] = 0.0f; quadVerts[3][3] = 1.0f;
+
+	texCoords[0][0] = 0.5f / cols;          texCoords[0][1] = 0.5f / rows;
+	texCoords[1][0] = (cols - 0.5f) / cols; texCoords[1][1] = 0.5f / rows;
+	texCoords[2][0] = (cols - 0.5f) / cols; texCoords[2][1] = (rows - 0.5f) / rows;
+	texCoords[3][0] = 0.5f / cols;          texCoords[3][1] = (rows - 0.5f) / rows;
+
+	RB_InstantQuad2( quadVerts, texCoords );
 }
 
 void RE_UploadCinematic (int w, int h, int cols, int rows, const byte *data, int client, qboolean dirty) {
+	byte *buffer;
 
 	GL_Bind( tr.scratchImage[client] );
 
@@ -791,15 +839,29 @@ void RE_UploadCinematic (int w, int h, int cols, int rows, const byte *data, int
 	if ( cols != tr.scratchImage[client]->width || rows != tr.scratchImage[client]->height ) {
 		tr.scratchImage[client]->width = tr.scratchImage[client]->uploadWidth = cols;
 		tr.scratchImage[client]->height = tr.scratchImage[client]->uploadHeight = rows;
+#ifdef USE_GLES_FIXED
+		if ( qglesMajorVersion >= 1 ) {
+			buffer = ri.Hunk_AllocateTempMemory( 3 * cols * rows );
+			R_ConvertTextureFormat( data, cols, rows, GL_RGB, GL_UNSIGNED_BYTE, buffer );
+			qglTexImage2D( GL_TEXTURE_2D, 0, GL_RGB, cols, rows, 0, GL_RGB, GL_UNSIGNED_BYTE, buffer );
+			ri.Hunk_FreeTempMemory( buffer );
+		} else
+#endif
 		qglTexImage2D( GL_TEXTURE_2D, 0, GL_RGB8, cols, rows, 0, GL_RGBA, GL_UNSIGNED_BYTE, data );
 		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
 		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, haveClampToEdge ? GL_CLAMP_TO_EDGE : GL_CLAMP );
-		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, haveClampToEdge ? GL_CLAMP_TO_EDGE : GL_CLAMP );
+		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );	
 	} else {
 		if (dirty) {
-			// otherwise, just subimage upload it so that drivers can tell we are going to be changing
-			// it and don't try and do a texture compression
+#ifdef USE_GLES_FIXED
+			if ( qglesMajorVersion >= 1 ) {
+				buffer = ri.Hunk_AllocateTempMemory( 3 * cols * rows );
+				R_ConvertTextureFormat( data, cols, rows, GL_RGB, GL_UNSIGNED_BYTE, buffer );
+				qglTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, cols, rows, GL_RGB, GL_UNSIGNED_BYTE, buffer );
+				ri.Hunk_FreeTempMemory( buffer );
+			} else
+#endif
 			qglTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, cols, rows, GL_RGBA, GL_UNSIGNED_BYTE, data );
 		}
 	}
@@ -1084,6 +1146,12 @@ const void	*RB_SwapBuffers( const void *data ) {
 		ri.Hunk_FreeTempMemory( stencilReadback );
 	}
 
+#ifdef FRAMEBUFFER_AND_GLSL_SUPPORT
+	// Check to render Framebuffer if still not done
+	if (!backEnd.projection2D) {
+		R_FrameBuffer_EndFrame();
+	}
+#endif
 
 	if ( !glState.finishCalled ) {
 		qglFinish();
@@ -1116,22 +1184,42 @@ void RB_ExecuteRenderCommands( const void *data ) {
 			data = RB_SetColor( data );
 			break;
 		case RC_STRETCH_PIC:
+#ifdef FRAMEBUFFER_AND_GLSL_SUPPORT
+			R_FrameBuffer_EndFrame();
+#endif
 			data = RB_StretchPic( data );
 			break;
 		case RC_DRAW_SURFS:
 			data = RB_DrawSurfs( data );
 			break;
 		case RC_DRAW_BUFFER:
+#ifdef FRAMEBUFFER_AND_GLSL_SUPPORT
+			data = useFrameBuffer ? RB_DrawFrameBuffer( data ) : RB_DrawBuffer( data );
+#else
 			data = RB_DrawBuffer( data );
+#endif
 			break;
 		case RC_SWAP_BUFFERS:
 			data = RB_SwapBuffers( data );
 			break;
+		//these two use a hack to let them copy the framebuffer effects too
 		case RC_SCREENSHOT:
+#ifdef FRAMEBUFFER_AND_GLSL_SUPPORT
+			R_FrameBufferUnBind();
+#endif
 			data = RB_TakeScreenshotCmd( data );
+#ifdef FRAMEBUFFER_AND_GLSL_SUPPORT
+			R_FrameBufferBind();
+#endif
 			break;
 		case RC_VIDEOFRAME:
+#ifdef FRAMEBUFFER_AND_GLSL_SUPPORT
+			R_FrameBufferUnBind();
+#endif
 			data = RB_TakeVideoFrameCmd( data );
+#ifdef FRAMEBUFFER_AND_GLSL_SUPPORT
+			R_FrameBufferBind();
+#endif
 			break;
 		case RC_COLORMASK:
 			data = RB_ColorMask(data);

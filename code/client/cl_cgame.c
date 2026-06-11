@@ -53,6 +53,25 @@ void CL_GetGlconfig( glconfig_t *glconfig ) {
 	*glconfig = cls.glconfig;
 }
 
+#ifdef IOS
+static void CL_IOS_AdjustVMStretchPic( float *x, float *y, float *w, float *h )
+{
+	float oldXScale = cls.glconfig.vidWidth / 640.0f;
+	float oldYScale = cls.glconfig.vidHeight / 480.0f;
+	float scale = oldYScale;
+	float bias = 0.5f * ( cls.glconfig.vidWidth - 640.0f * scale );
+
+	if( oldXScale <= 0.0f || oldYScale <= 0.0f )
+		return;
+	if( bias < 0.0f )
+		bias = 0.0f;
+
+	*x = ( *x / oldXScale ) * scale + bias;
+	*w = ( *w / oldXScale ) * scale;
+	*y = ( *y / oldYScale ) * scale;
+	*h = ( *h / oldYScale ) * scale;
+}
+#endif
 
 /*
 ====================
@@ -569,8 +588,17 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		re.SetColor( VMA(1) );
 		return 0;
 	case CG_R_DRAWSTRETCHPIC:
+#ifdef IOS
+	{
+		float x = VMF(1), y = VMF(2), w = VMF(3), h = VMF(4);
+		CL_IOS_AdjustVMStretchPic( &x, &y, &w, &h );
+		re.DrawStretchPic( x, y, w, h, VMF(5), VMF(6), VMF(7), VMF(8), args[9] );
+		return 0;
+	}
+#else
 		re.DrawStretchPic( VMF(1), VMF(2), VMF(3), VMF(4), VMF(5), VMF(6), VMF(7), VMF(8), args[9] );
 		return 0;
+#endif
 	case CG_R_MODELBOUNDS:
 		re.ModelBounds( args[1], VMA(2), VMA(3) );
 		return 0;

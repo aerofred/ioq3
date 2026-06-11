@@ -86,6 +86,30 @@ QGL_EXT_direct_state_access_PROCS;
 #undef GLE
 
 #ifdef IOS
+static qboolean GLimp_UpdateIOSVidSize( void )
+{
+	int drawableW = 0;
+	int drawableH = 0;
+
+	if( !SDL_window )
+		return qfalse;
+
+	SDL_GL_GetDrawableSize( SDL_window, &drawableW, &drawableH );
+
+	if( drawableW <= 0 || drawableH <= 0 )
+		return qfalse;
+
+	if( glConfig.vidWidth == drawableW && glConfig.vidHeight == drawableH )
+		return qfalse;
+
+	glConfig.vidWidth = drawableW;
+	glConfig.vidHeight = drawableH;
+	glConfig.windowAspect = (float)glConfig.vidWidth / (float)glConfig.vidHeight;
+
+	ri.Printf( PRINT_ALL, "iOS drawable size: %d x %d\n", glConfig.vidWidth, glConfig.vidHeight );
+	return qtrue;
+}
+
 static void GLimp_SyncIOSLayer( void )
 {
 	int pointsW = 0;
@@ -441,6 +465,10 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 	SDL_DisplayMode desktopMode;
 	int display = 0;
 	int x = SDL_WINDOWPOS_UNDEFINED, y = SDL_WINDOWPOS_UNDEFINED;
+
+#ifdef IOS
+	flags |= SDL_WINDOW_ALLOW_HIGHDPI;
+#endif
 
 	ri.Printf( PRINT_ALL, "Initializing OpenGL display\n");
 
@@ -844,6 +872,10 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 
 		ri.Printf( PRINT_ALL, "Using %d color bits, %d depth, %d stencil display.\n",
 				glConfig.colorBits, glConfig.depthBits, glConfig.stencilBits );
+
+#ifdef IOS
+		GLimp_UpdateIOSVidSize();
+#endif
 		break;
 	}
 
@@ -877,6 +909,11 @@ static qboolean GLimp_StartDriverAndSetMode(int mode, qboolean fullscreen, qbool
 	if (!SDL_WasInit(SDL_INIT_VIDEO))
 	{
 		const char *driverName;
+
+#ifdef IOS
+		SDL_SetHint( "SDL_VIDEO_HIGHDPI_DISABLED", "0" );
+		SDL_SetHint( SDL_HINT_IOS_HIDE_HOME_INDICATOR, "2" );
+#endif
 
 		if (SDL_Init(SDL_INIT_VIDEO) != 0)
 		{
@@ -1262,7 +1299,10 @@ void GLimp_EndFrame( void )
 		r_fullscreen->modified = qfalse;
 
 #ifdef IOS
-		GLimp_SyncIOSLayer();
+		if( GLimp_UpdateIOSVidSize() )
+			ri.Cmd_ExecuteText( EXEC_APPEND, "vid_restart\n" );
+		else
+			GLimp_SyncIOSLayer();
 #endif
 	}
 }

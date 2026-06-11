@@ -541,8 +541,10 @@ static void IN_TouchUIMouse( float x, float y, qboolean down, qboolean move )
 			touchUITapCandidate = qfalse;
 	}
 
-	dx = (int)( ( x - touchUILastPx ) * in_touchUISensitivity->value );
-	dy = (int)( ( y - touchUILastPy ) * in_touchUISensitivity->value );
+	dx = (int)( ( x - touchUILastPx ) * 640.0f / (float)( touchWidth > 0 ? touchWidth : 1 )
+		* in_touchUISensitivity->value );
+	dy = (int)( ( y - touchUILastPy ) * 480.0f / (float)( touchHeight > 0 ? touchHeight : 1 )
+		* in_touchUISensitivity->value );
 	touchUILastPx = x;
 	touchUILastPy = y;
 

@@ -12,10 +12,18 @@ set(RENDERER_COMMON_SOURCES
     ${SOURCE_DIR}/renderercommon/puff.c
 )
 
-set(SDL_RENDERER_SOURCES
-    ${SOURCE_DIR}/sdl/sdl_gamma.c
-    ${SOURCE_DIR}/sdl/sdl_glimp.c
-)
+if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
+	set(SDL_RENDERER_SOURCES
+		${SOURCE_DIR}/sdl/sdl_gamma.c
+		${SOURCE_DIR}/sdl/sdl_glimp_ios.c
+		${SOURCE_DIR}/sdl/gles_es1_stubs.c
+	)
+else()
+	set(SDL_RENDERER_SOURCES
+		${SOURCE_DIR}/sdl/sdl_gamma.c
+		${SOURCE_DIR}/sdl/sdl_glimp.c
+	)
+endif()
 
 set(DYNAMIC_RENDERER_SOURCES
     ${SOURCE_DIR}/renderercommon/tr_subs.c

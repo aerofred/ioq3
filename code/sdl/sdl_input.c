@@ -1131,16 +1131,28 @@ static void IN_ProcessEvents( void )
 				break;
 
 			case SDL_MOUSEMOTION:
+#ifdef IOS
+				if( IN_TouchInUIMode() )
+					break;
+				if( !e.motion.xrel && !e.motion.yrel )
+					break;
+				Com_QueueEvent( in_eventTime, SE_MOUSE, e.motion.xrel, e.motion.yrel, 0, NULL );
+#else
 				if( mouseActive )
 				{
 					if( !e.motion.xrel && !e.motion.yrel )
 						break;
 					Com_QueueEvent( in_eventTime, SE_MOUSE, e.motion.xrel, e.motion.yrel, 0, NULL );
 				}
+#endif
 				break;
 
 			case SDL_MOUSEBUTTONDOWN:
 			case SDL_MOUSEBUTTONUP:
+#ifdef IOS
+				if( IN_TouchInUIMode() )
+					break;
+#endif
 				{
 					int b;
 					switch( e.button.button )
@@ -1183,6 +1195,26 @@ static void IN_ProcessEvents( void )
 			case SDL_WINDOWEVENT:
 				switch( e.window.event )
 				{
+#ifdef IOS
+					case SDL_WINDOWEVENT_SIZE_CHANGED:
+					case SDL_WINDOWEVENT_RESIZED:
+						{
+							int drawableW = 0;
+							int drawableH = 0;
+
+							if( SDL_window )
+								SDL_GL_GetDrawableSize( SDL_window, &drawableW, &drawableH );
+
+							if( drawableW <= 0 || drawableH <= 0 )
+								break;
+
+							if( cls.glconfig.vidWidth == drawableW && cls.glconfig.vidHeight == drawableH )
+								break;
+
+							vidRestartTime = Sys_Milliseconds( ) + 100;
+						}
+						break;
+#else
 					case SDL_WINDOWEVENT_RESIZED:
 						{
 							int width, height;
@@ -1212,6 +1244,7 @@ static void IN_ProcessEvents( void )
 							vidRestartTime = Sys_Milliseconds( ) + 1000;
 						}
 						break;
+#endif
 
 					case SDL_WINDOWEVENT_MINIMIZED:    Cvar_SetValue( "com_minimized", 1 ); break;
 					case SDL_WINDOWEVENT_RESTORED:
@@ -1274,15 +1307,24 @@ IN_Frame
 */
 void IN_Frame( void )
 {
-	qboolean loading;
-
 	IN_JoyMove( );
-
-	// If not DISCONNECTED (main menu) or ACTIVE (in game), we're loading
-	loading = ( clc.state != CA_DISCONNECTED && clc.state != CA_ACTIVE );
 
 	// update isFullscreen since it might of changed since the last vid_restart
 	cls.glconfig.isFullscreen = Cvar_VariableIntegerValue( "r_fullscreen" ) != 0;
+
+#ifdef IOS
+	if( IOS_Layer_IsActive() )
+	{
+		SDL_SetRelativeMouseMode( SDL_TRUE );
+		SDL_SetWindowGrab( SDL_window, SDL_TRUE );
+		mouseActive = qtrue;
+	}
+#else
+	{
+		qboolean loading;
+
+		// If not DISCONNECTED (main menu) or ACTIVE (in game), we're loading
+		loading = ( clc.state != CA_DISCONNECTED && clc.state != CA_ACTIVE );
 
 	if( !cls.glconfig.isFullscreen && ( Key_GetCatcher( ) & KEYCATCH_CONSOLE ) )
 	{
@@ -1301,6 +1343,8 @@ void IN_Frame( void )
 	}
 	else
 		IN_ActivateMouse( cls.glconfig.isFullscreen );
+	}
+#endif
 
 	IN_ProcessEvents( );
 
@@ -1354,9 +1398,10 @@ void IN_Init( void *windowData )
 #ifdef IOS
 	SDL_SetHint( SDL_HINT_TOUCH_MOUSE_EVENTS, "0" );
 	SDL_SetHint( SDL_HINT_MOUSE_TOUCH_EVENTS, "0" );
-#endif
-
+	SDL_SetHint( SDL_HINT_ENABLE_SCREEN_KEYBOARD, "0" );
+#else
 	SDL_StartTextInput( );
+#endif
 
 	mouseAvailable = ( in_mouse->value != 0 );
 	IN_DeactivateMouse( Cvar_VariableIntegerValue( "r_fullscreen" ) != 0 );
@@ -1379,7 +1424,9 @@ IN_Shutdown
 */
 void IN_Shutdown( void )
 {
+#ifndef IOS
 	SDL_StopTextInput( );
+#endif
 
 	IN_DeactivateMouse( Cvar_VariableIntegerValue( "r_fullscreen" ) != 0 );
 	mouseAvailable = qfalse;
