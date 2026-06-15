@@ -6,6 +6,7 @@
 #include "../ios/ios_gamepad.h"
 #include "../sdl/sdl_input_ios_gamepad.h"
 #include "../sdl/sdl_input_keyboard.h"
+#include "../sdl/sdl_input_mouse.h"
 #include "../sys/sys_local.h"
 
 static qboolean inputInited = qfalse;
@@ -25,17 +26,6 @@ static void IN_ProcessEvent( SDL_Event *event )
 			break;
 		case SDL_FINGERUP:
 			IN_TouchFinger( event->tfinger.fingerId, event->tfinger.x, event->tfinger.y, qfalse, qfalse );
-			break;
-		case SDL_MOUSEMOTION:
-		case SDL_MOUSEBUTTONDOWN:
-		case SDL_MOUSEBUTTONUP:
-			if( IN_TouchInUIMode() )
-				break;
-			if( event->type == SDL_MOUSEMOTION )
-				Com_QueueEvent( 0, SE_MOUSE, event->motion.xrel, event->motion.yrel, 0, NULL );
-			else
-				Com_QueueEvent( 0, SE_KEY, event->button.button == SDL_BUTTON_RIGHT ? K_MOUSE2 : K_MOUSE1,
-					event->button.state == SDL_PRESSED, 0, NULL );
 			break;
 		case SDL_CONTROLLERAXISMOTION:
 		case SDL_CONTROLLERBUTTONDOWN:
@@ -80,14 +70,19 @@ void IN_Frame( void )
 	SDL_Event event;
 
 	IN_Keyboard_SetEventTime( Sys_Milliseconds() );
+	IN_Mouse_SetEventTime( Sys_Milliseconds() );
 
 	while( SDL_PollEvent( &event ) )
 	{
-		if( !IN_Keyboard_ProcessEvent( &event ) )
-			IN_ProcessEvent( &event );
+		if( IN_Keyboard_ProcessEvent( &event ) )
+			continue;
+		if( IN_Mouse_ProcessEvent( &event ) )
+			continue;
+		IN_ProcessEvent( &event );
 	}
 
 	IN_Keyboard_UpdateTextInput();
+	IN_Mouse_UpdateGrab();
 	IN_IosGamepadFrame();
 	IN_TouchFrame();
 }
@@ -107,6 +102,7 @@ void IN_Init( void *windowData )
 	SDL_SetHint( SDL_HINT_MOUSE_TOUCH_EVENTS, "0" );
 	SDL_InitSubSystem( SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER | SDL_INIT_JOYSTICK );
 	IN_Keyboard_Init();
+	IN_Mouse_Init();
 	IN_TouchInit();
 	IN_IosGamepadInit();
 	IN_IosRegisterCommands();
@@ -118,6 +114,7 @@ void IN_Shutdown( void )
 	if( !inputInited )
 		return;
 	IN_Keyboard_Shutdown();
+	IN_Mouse_Shutdown();
 	IN_IosGamepadShutdown();
 	IN_TouchShutdown();
 	SDL_QuitSubSystem( SDL_INIT_GAMECONTROLLER | SDL_INIT_JOYSTICK );

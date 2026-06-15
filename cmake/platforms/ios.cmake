@@ -32,7 +32,8 @@ list(APPEND CLIENT_PLATFORM_SOURCES
     ${SOURCE_DIR}/ios/ios_numpad.m
     ${SOURCE_DIR}/sdl/sdl_input_ios.c
     ${SOURCE_DIR}/sdl/sdl_input_ios_gamepad.c
-    ${SOURCE_DIR}/sdl/sdl_input_keyboard.c)
+    ${SOURCE_DIR}/sdl/sdl_input_keyboard.c
+    ${SOURCE_DIR}/sdl/sdl_input_mouse.c)
 
 list(APPEND COMMON_LIBRARIES
     "-framework Foundation"

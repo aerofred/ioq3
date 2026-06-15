@@ -202,6 +202,17 @@ static qboolean Touch_FireButtonsMode( void )
 	return in_touchFireMode && in_touchFireMode->integer == 1;
 }
 
+static qboolean Touch_HideControlsForHardwareInput( void )
+{
+#ifdef IOS
+	if( touchEditMode )
+		return qfalse;
+	return IOS_Layer_HasHardwareKeyboard() && IOS_Layer_HasHardwareMouse();
+#else
+	return qfalse;
+#endif
+}
+
 static qboolean Touch_IsButtonZone( touchZone_t zone )
 {
 	return zone == TOUCH_ZONE_JUMP ||
@@ -356,29 +367,36 @@ static touchZone_t Touch_Classify( float x, float y )
 {
 	float stick = Touch_StickRadius();
 	float button = Touch_ButtonRadius();
+	qboolean hideControls = Touch_HideControlsForHardwareInput();
 
-	if( Touch_PointNear( x, y, Touch_EdgeX( in_touchMenuX ), Touch_EdgeY( in_touchMenuY ), button ) )
-		return TOUCH_ZONE_MENU;
-	if( Touch_PointNear( x, y, Touch_EdgeX( in_touchConfigX ), Touch_EdgeY( in_touchConfigY ), button ) )
-		return TOUCH_ZONE_CONFIG;
+	if( !hideControls )
+	{
+		if( Touch_PointNear( x, y, Touch_EdgeX( in_touchMenuX ), Touch_EdgeY( in_touchMenuY ), button ) )
+			return TOUCH_ZONE_MENU;
+		if( Touch_PointNear( x, y, Touch_EdgeX( in_touchConfigX ), Touch_EdgeY( in_touchConfigY ), button ) )
+			return TOUCH_ZONE_CONFIG;
+	}
 	if( touchEditMode && Touch_PointOnSizeSlider( x, y ) )
 		return TOUCH_ZONE_SIZE_SLIDER;
-	if( Touch_PointNear( x, y, Touch_EdgeX( in_touchJumpX ), Touch_EdgeY( in_touchJumpY ), button ) )
-		return TOUCH_ZONE_JUMP;
-	if( Touch_PointNear( x, y, Touch_EdgeX( in_touchCrouchX ), Touch_EdgeY( in_touchCrouchY ), button ) )
-		return TOUCH_ZONE_CROUCH;
-	if( Touch_PointNear( x, y, Touch_EdgeX( in_touchUseX ), Touch_EdgeY( in_touchUseY ), button ) )
-		return TOUCH_ZONE_USE;
-	if( Touch_PointNear( x, y, Touch_EdgeX( in_touchOpenX ), Touch_EdgeY( in_touchOpenY ), button ) )
-		return TOUCH_ZONE_OPEN;
-	if( Touch_PointNear( x, y, Touch_EdgeX( in_touchWeaponsX ), Touch_EdgeY( in_touchWeaponsY ), button ) )
-		return TOUCH_ZONE_WEAPONS;
-	if( Touch_FireButtonsMode() )
+	if( !hideControls )
 	{
-		if( Touch_PointNear( x, y, Touch_EdgeX( in_touchFireX ), Touch_EdgeY( in_touchFireY ), button ) )
-			return TOUCH_ZONE_FIRE;
-		if( Touch_PointNear( x, y, Touch_EdgeX( in_touchAltFireX ), Touch_EdgeY( in_touchAltFireY ), button ) )
-			return TOUCH_ZONE_ALT_FIRE;
+		if( Touch_PointNear( x, y, Touch_EdgeX( in_touchJumpX ), Touch_EdgeY( in_touchJumpY ), button ) )
+			return TOUCH_ZONE_JUMP;
+		if( Touch_PointNear( x, y, Touch_EdgeX( in_touchCrouchX ), Touch_EdgeY( in_touchCrouchY ), button ) )
+			return TOUCH_ZONE_CROUCH;
+		if( Touch_PointNear( x, y, Touch_EdgeX( in_touchUseX ), Touch_EdgeY( in_touchUseY ), button ) )
+			return TOUCH_ZONE_USE;
+		if( Touch_PointNear( x, y, Touch_EdgeX( in_touchOpenX ), Touch_EdgeY( in_touchOpenY ), button ) )
+			return TOUCH_ZONE_OPEN;
+		if( Touch_PointNear( x, y, Touch_EdgeX( in_touchWeaponsX ), Touch_EdgeY( in_touchWeaponsY ), button ) )
+			return TOUCH_ZONE_WEAPONS;
+		if( Touch_FireButtonsMode() )
+		{
+			if( Touch_PointNear( x, y, Touch_EdgeX( in_touchFireX ), Touch_EdgeY( in_touchFireY ), button ) )
+				return TOUCH_ZONE_FIRE;
+			if( Touch_PointNear( x, y, Touch_EdgeX( in_touchAltFireX ), Touch_EdgeY( in_touchAltFireY ), button ) )
+				return TOUCH_ZONE_ALT_FIRE;
+		}
 	}
 	if( touchEditMode )
 	{
@@ -1214,6 +1232,7 @@ void IN_TouchDraw( void )
 	float lookStickRadius = 0.0f;
 	float fireRadius = 0.0f;
 	float altFireRadius = 0.0f;
+	qboolean hideControls;
 
 	if( !in_touch || !in_touch->integer )
 	{
@@ -1274,6 +1293,13 @@ void IN_TouchDraw( void )
 	{
 		fireRadius = button;
 		altFireRadius = button;
+	}
+	hideControls = Touch_HideControlsForHardwareInput();
+	if( hideControls )
+	{
+		fireRadius = 0.0f;
+		altFireRadius = 0.0f;
+		button = 0.0f;
 	}
 	jx = Touch_EdgeX( in_touchJumpX );
 	jy = Touch_EdgeY( in_touchJumpY );

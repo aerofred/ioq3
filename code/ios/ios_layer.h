@@ -25,6 +25,8 @@ void IOS_Layer_Shutdown( void );
 void IOS_Layer_Tick( void );
 void IOS_Layer_SetActive( qboolean active );
 qboolean IOS_Layer_IsActive( void );
+qboolean IOS_Layer_HasHardwareKeyboard( void );
+qboolean IOS_Layer_HasHardwareMouse( void );
 void IOS_Layer_SyncScreen( int width, int height, float scale );
 void IOS_Layer_GetLayout( iosLayout_t *layout );
 void IOS_Layer_SetGameOverlayVisible( qboolean visible );

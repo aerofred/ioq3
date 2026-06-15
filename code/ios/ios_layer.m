@@ -3,6 +3,7 @@
 #include "../client/cl_touch.h"
 
 #import <UIKit/UIKit.h>
+#import <GameController/GameController.h>
 
 static iosLayout_t iosLayout = { 0, 0, 0, 0, 0, 0, 1 };
 static qboolean iosOverlayVisible = qtrue;
@@ -83,6 +84,24 @@ void IOS_Layer_SetActive( qboolean active )
 qboolean IOS_Layer_IsActive( void )
 {
 	return iosAppActive;
+}
+
+qboolean IOS_Layer_HasHardwareKeyboard( void )
+{
+#if defined( __IPHONE_OS_VERSION_MAX_ALLOWED ) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 140000
+	if( @available( iOS 14.0, * ) )
+		return [GCKeyboard coalescedKeyboard] != nil ? qtrue : qfalse;
+#endif
+	return qfalse;
+}
+
+qboolean IOS_Layer_HasHardwareMouse( void )
+{
+#if defined( __IPHONE_OS_VERSION_MAX_ALLOWED ) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 140000
+	if( @available( iOS 14.0, * ) )
+		return [[GCMouse mice] count] > 0 ? qtrue : qfalse;
+#endif
+	return qfalse;
 }
 
 static void IOS_InstallLifecycleObservers( void )
@@ -254,6 +273,8 @@ static CGRect IOS_RectFromPixelCenter( float x, float y, float radius, CGFloat f
 			CGRect buttonRect = IOS_RectFromPixelCenter( x, y, radius, 0.58 );
 			CGRect borderRect = IOS_RectFromPixelCenter( x, y, radius, 1.0 );
 			CGFloat a = active ? MIN( alpha + 0.22, 0.92 ) : alpha;
+			if( radius <= 0.0f )
+				return;
 			[color colorWithAlphaComponent:a];
 			CGContextSetFillColorWithColor( ctx, [color colorWithAlphaComponent:a].CGColor );
 			CGContextFillEllipseInRect( ctx, buttonRect );
@@ -354,6 +375,15 @@ static CGRect IOS_RectFromPixelCenter( float x, float y, float radius, CGFloat f
 		float ny = bounds.size.height > 0.0 ? (float)( p.y / bounds.size.height ) : 0.0f;
 		IN_TouchFinger( (long long)(uintptr_t)touch, nx, ny, down ? qtrue : qfalse, motion ? qtrue : qfalse );
 	}
+}
+
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
+{
+	/* Finger touches stay on the overlay; mouse/trackpad pass through to SDL. */
+	if( event && event.type != UIEventTypeTouches )
+		return nil;
+
+	return [super hitTest:point withEvent:event];
 }
 
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
