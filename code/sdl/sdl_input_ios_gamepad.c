@@ -11,6 +11,7 @@
 #include "../sys/sys_local.h"
 #include "../ios/ios_gamepad.h"
 #include "../ios/ios_gamepad_look.h"
+#include "../ios/ios_layer.h"
 
 static SDL_Joystick *stick = NULL;
 static SDL_GameController *gamepad = NULL;
@@ -310,6 +311,55 @@ static void IN_IosPadMoveDigitalSticks( void )
 	}
 }
 
+void IN_IosGamepadMenuNav( qboolean up, qboolean down, qboolean left,
+	qboolean right, qboolean accept, qboolean cancel )
+{
+	static qboolean state[6];
+	const int keys[6] = {
+		K_UPARROW, K_DOWNARROW, K_LEFTARROW, K_RIGHTARROW, K_ENTER, K_ESCAPE
+	};
+	qboolean wanted[6];
+	qboolean active;
+	int i;
+
+	/* Only while an external display is connected and a menu/UI is capturing
+	 * keys. Q3 menus ignore raw PAD0_* keys, so we inject equivalent keyboard
+	 * navigation alongside the normal (ignored) gamepad key events. */
+	active = IOS_Layer_HasExternalScreen() &&
+		( Key_GetCatcher() & ( KEYCATCH_UI | KEYCATCH_CGAME ) ) != 0;
+
+	wanted[0] = active && up;
+	wanted[1] = active && down;
+	wanted[2] = active && left;
+	wanted[3] = active && right;
+	wanted[4] = active && accept;
+	wanted[5] = active && cancel;
+
+	for ( i = 0; i < 6; i++ ) {
+		if ( wanted[i] == state[i] ) {
+			continue;
+		}
+		state[i] = wanted[i];
+		Com_QueueEvent( 0, SE_KEY, keys[i], wanted[i], 0, NULL );
+	}
+}
+
+static void IN_IosPadMenuNavFromController( void )
+{
+	if ( !gamepad ) {
+		IN_IosGamepadMenuNav( qfalse, qfalse, qfalse, qfalse, qfalse, qfalse );
+		return;
+	}
+
+	IN_IosGamepadMenuNav(
+		SDL_GameControllerGetButton( gamepad, SDL_CONTROLLER_BUTTON_DPAD_UP ),
+		SDL_GameControllerGetButton( gamepad, SDL_CONTROLLER_BUTTON_DPAD_DOWN ),
+		SDL_GameControllerGetButton( gamepad, SDL_CONTROLLER_BUTTON_DPAD_LEFT ),
+		SDL_GameControllerGetButton( gamepad, SDL_CONTROLLER_BUTTON_DPAD_RIGHT ),
+		SDL_GameControllerGetButton( gamepad, SDL_CONTROLLER_BUTTON_A ),
+		SDL_GameControllerGetButton( gamepad, SDL_CONTROLLER_BUTTON_B ) );
+}
+
 static void IN_PadMove( void )
 {
 	int i;
@@ -346,6 +396,8 @@ static void IN_PadMove( void )
 	if ( gamepad ) {
 		IN_IosPadMoveDigitalSticks();
 	}
+
+	IN_IosPadMenuNavFromController();
 }
 
 static void IN_InitJoystick( void )

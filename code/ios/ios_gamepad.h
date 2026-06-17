@@ -17,5 +17,7 @@ void IOS_Gamepad_ReloadKeyNumbers( void );
 qboolean IOS_Gamepad_IsActive( void );
 void IOS_Gamepad_SetNativePresent( qboolean present );
 void IOS_Gamepad_NotifyDeviceChange( void );
+void IOS_Mouse_Init( void );
+void IOS_Mouse_Shutdown( void );
 
 #endif

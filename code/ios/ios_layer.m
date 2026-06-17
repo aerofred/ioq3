@@ -8,6 +8,7 @@
 static iosLayout_t iosLayout = { 0, 0, 0, 0, 0, 0, 1 };
 static qboolean iosOverlayVisible = qtrue;
 static volatile qboolean iosAppActive = qtrue;
+static volatile qboolean iosExternalScreenPresent = qfalse;
 static qboolean iosLifecycleObserversInstalled = qfalse;
 
 typedef struct iosTouchOverlayState_s
@@ -42,6 +43,25 @@ typedef struct iosTouchOverlayState_s
 } iosTouchOverlayState_t;
 
 static iosTouchOverlayState_t iosTouchOverlay;
+
+/* --- External-display input debugging (temporary instrumentation) --- */
+volatile int ios_dbgTouchDown = 0;
+volatile int ios_dbgTouchMove = 0;
+volatile int ios_dbgTouchUp = 0;
+volatile int ios_dbgUIMouse = 0;
+volatile int ios_dbgUILastDx = 0;
+volatile int ios_dbgUILastDy = 0;
+volatile int ios_dbgGCMove = 0;
+volatile int ios_dbgGCBtn = 0;
+volatile int ios_dbgGCLastDx = 0;
+volatile int ios_dbgGCLastDy = 0;
+volatile int ios_dbgGCGate = 0;
+volatile int ios_dbgCatcher = 0;
+volatile int ios_dbgClcState = 0;
+volatile int ios_dbgInUI = 0;
+volatile int ios_dbgExtKBM = 0;
+static const BOOL iosDebugHud = YES;
+extern qboolean GLimp_RenderingOnExternalDisplay( void );
 
 @interface SGTouchOverlayView : UIView
 @end
@@ -104,6 +124,16 @@ qboolean IOS_Layer_HasHardwareMouse( void )
 	return qfalse;
 }
 
+qboolean IOS_Layer_HasExternalScreen( void )
+{
+	return iosExternalScreenPresent;
+}
+
+static void IOS_RefreshExternalScreen( void )
+{
+	iosExternalScreenPresent = ( UIScreen.screens.count > 1 ) ? qtrue : qfalse;
+}
+
 static void IOS_InstallLifecycleObservers( void )
 {
 	if( iosLifecycleObserversInstalled )
@@ -135,11 +165,40 @@ static void IOS_InstallLifecycleObservers( void )
 				IOS_Layer_SetActive( qtrue );
 				IOS_HideSystemChrome();
 			}];
+		[center addObserverForName:UIScreenDidConnectNotification object:nil queue:queue
+			usingBlock:^( NSNotification *note ) {
+				(void)note;
+				IOS_RefreshExternalScreen();
+			}];
+		[center addObserverForName:UIScreenDidDisconnectNotification object:nil queue:queue
+			usingBlock:^( NSNotification *note ) {
+				(void)note;
+				IOS_RefreshExternalScreen();
+			}];
 	} );
 }
 
 static UIWindowScene *IOS_ActiveWindowScene( void )
 {
+	/* The touch overlay must live on the device's own screen, never on the
+	 * external display. Prefer a foreground-active window scene bound to the
+	 * main screen so it keeps receiving touches and the pointer while the GL
+	 * surface renders on the external screen. */
+	for( UIScene *scene in UIApplication.sharedApplication.connectedScenes )
+	{
+		if( [scene isKindOfClass:[UIWindowScene class]] &&
+			scene.activationState == UISceneActivationStateForegroundActive &&
+			((UIWindowScene *)scene).screen == UIScreen.mainScreen )
+			return (UIWindowScene *)scene;
+	}
+
+	for( UIScene *scene in UIApplication.sharedApplication.connectedScenes )
+	{
+		if( [scene isKindOfClass:[UIWindowScene class]] &&
+			((UIWindowScene *)scene).screen == UIScreen.mainScreen )
+			return (UIWindowScene *)scene;
+	}
+
 	for( UIScene *scene in UIApplication.sharedApplication.connectedScenes )
 	{
 		if( [scene isKindOfClass:[UIWindowScene class]] &&
@@ -256,6 +315,37 @@ static CGRect IOS_RectFromPixelCenter( float x, float y, float radius, CGFloat f
 	CGFloat scale = IOS_PointScale();
 	CGFloat alpha;
 	(void)rect;
+
+	if( ctx && iosDebugHud )
+	{
+		BOOL key = self.window.isKeyWindow;
+		BOOL onMain = ( self.window.screen == UIScreen.mainScreen );
+		BOOL roe = GLimp_RenderingOnExternalDisplay() ? YES : NO;
+		NSArray<NSString *> *lines = @[
+			[NSString stringWithFormat:@"ext=%d roe=%d key=%d main=%d",
+				iosExternalScreenPresent, roe, key, onMain],
+			[NSString stringWithFormat:@"touch d=%d m=%d u=%d",
+				ios_dbgTouchDown, ios_dbgTouchMove, ios_dbgTouchUp],
+			[NSString stringWithFormat:@"uiMouse n=%d last=%d,%d",
+				ios_dbgUIMouse, ios_dbgUILastDx, ios_dbgUILastDy],
+			[NSString stringWithFormat:@"gcMouse n=%d btn=%d last=%d,%d gate=%d",
+				ios_dbgGCMove, ios_dbgGCBtn, ios_dbgGCLastDx, ios_dbgGCLastDy, ios_dbgGCGate],
+			[NSString stringWithFormat:@"catch=%d clc=%d ui=%d kbm=%d",
+				ios_dbgCatcher, ios_dbgClcState, ios_dbgInUI, ios_dbgExtKBM]
+		];
+		CGFloat y = 40.0;
+		NSDictionary *attrs = @{
+			NSFontAttributeName: [UIFont boldSystemFontOfSize:13.0],
+			NSForegroundColorAttributeName: [UIColor greenColor]
+		};
+		CGContextSetFillColorWithColor( ctx, [UIColor colorWithWhite:0.0 alpha:0.55].CGColor );
+		CGContextFillRect( ctx, CGRectMake( 8.0, 36.0, 320.0, (CGFloat)lines.count * 17.0 + 8.0 ) );
+		for( NSString *line in lines )
+		{
+			[line drawAtPoint:CGPointMake( 14.0, y ) withAttributes:attrs];
+			y += 17.0;
+		}
+	}
 
 	if( !ctx || !iosOverlayVisible || !iosTouchOverlay.visible )
 		return;
@@ -432,6 +522,7 @@ void IOS_Layer_Init( void )
 	iosLayout.width = (float)size.width;
 	iosLayout.height = (float)size.height;
 	iosLayout.scale = (float)screen.scale;
+	IOS_RefreshExternalScreen();
 	IOS_InstallLifecycleObservers();
 	IOS_EnsureTouchOverlay();
 	IOS_HideSystemChrome();
@@ -448,17 +539,83 @@ void IOS_Layer_Shutdown( void )
 	} );
 }
 
+/*
+ * With the GL window on the external display, SDL's window would otherwise be
+ * the app's key window, leaving the device overlay without touch delivery or
+ * pointer capture (so neither finger nor physical mouse reach the engine).
+ * Keep the overlay as the key window on the device and (re)assert pointer lock
+ * so GCMouse relative deltas flow.
+ */
+static void IOS_PromoteOverlayForExternalScreen( void )
+{
+	if( !iosExternalScreenPresent )
+		return;
+
+	IOS_OnMainAsync( ^{
+		if( !iosTouchWindow )
+			return;
+		if( !iosTouchWindow.isKeyWindow )
+			[iosTouchWindow makeKeyAndVisible];
+		if( @available( iOS 14.0, * ) )
+		{
+			UIViewController *vc = iosTouchWindow.rootViewController;
+			if( [vc respondsToSelector:@selector(setNeedsUpdateOfPrefersPointerLocked)] )
+				[vc setNeedsUpdateOfPrefersPointerLocked];
+		}
+	} );
+}
+
 void IOS_Layer_Tick( void )
 {
 	IOS_EnsureTouchOverlay();
 	IOS_HideSystemChrome();
 	IOS_UpdateSafeArea();
+	IOS_PromoteOverlayForExternalScreen();
+	if( iosDebugHud )
+	{
+		static int dbgTick = 0;
+		IOS_OnMainAsync( ^{
+			[iosTouchView setNeedsDisplay];
+		} );
+		if( ( ++dbgTick % 60 ) == 0 )
+		{
+			BOOL key = iosTouchWindow.isKeyWindow;
+			BOOL onMain = ( iosTouchWindow.screen == UIScreen.mainScreen );
+			int roe = GLimp_RenderingOnExternalDisplay() ? 1 : 0;
+			int mice = 0;
+			if( @available( iOS 14.0, * ) )
+				mice = (int)GCMouse.mice.count;
+			NSLog( @"[EXTDBG] ext=%d roe=%d key=%d main=%d mice=%d | touch d=%d m=%d u=%d | "
+				@"uiMouse=%d(%d,%d) | gcMouse=%d btn=%d(%d,%d) gate=%d | catch=%d clc=%d ui=%d kbm=%d",
+				iosExternalScreenPresent, roe, key, onMain, mice,
+				ios_dbgTouchDown, ios_dbgTouchMove, ios_dbgTouchUp,
+				ios_dbgUIMouse, ios_dbgUILastDx, ios_dbgUILastDy,
+				ios_dbgGCMove, ios_dbgGCBtn, ios_dbgGCLastDx, ios_dbgGCLastDy, ios_dbgGCGate,
+				ios_dbgCatcher, ios_dbgClcState, ios_dbgInUI, ios_dbgExtKBM );
+		}
+	}
 }
 
 void IOS_Layer_SyncScreen( int width, int height, float scale )
 {
 	CGSize screenSize = UIScreen.mainScreen.bounds.size;
-	float newScale = scale > 0 ? scale : iosLayout.scale;
+	float newScale;
+
+	/* When an external display is connected the GL surface renders on that
+	 * external screen, but the touch overlay always lives on the device. Keep
+	 * the layout pinned to the device geometry so on-screen controls and touch
+	 * coordinates stay correct instead of following the external resolution. */
+	if( iosExternalScreenPresent )
+	{
+		iosLayout.width = (float)screenSize.width;
+		iosLayout.height = (float)screenSize.height;
+		iosLayout.scale = (float)UIScreen.mainScreen.scale;
+		IOS_EnsureTouchOverlay();
+		IOS_UpdateSafeArea();
+		return;
+	}
+
+	newScale = scale > 0 ? scale : iosLayout.scale;
 	float drawableW = width > 0 ? (float)width / ( newScale > 0 ? newScale : 1.0f ) : 0.0f;
 	float drawableH = height > 0 ? (float)height / ( newScale > 0 ? newScale : 1.0f ) : 0.0f;
 

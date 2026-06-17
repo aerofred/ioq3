@@ -22,6 +22,39 @@ void GLimp_AssignES1DesktopStubs( void );
 
 SDL_Window *SDL_window = NULL;
 static SDL_GLContext glContext = NULL;
+static int glimp_builtDisplayIndex = 0;
+
+/*
+ * Target display index for the GL surface: when an external display is
+ * connected (more than one SDL video display) the game renders there; the
+ * device screen is reserved for the touch-control overlay.
+ */
+int GLimp_DesiredDisplayIndex( void )
+{
+	return SDL_GetNumVideoDisplays() > 1 ? 1 : 0;
+}
+
+/*
+ * True when the GL window was built for a different display than the one we
+ * now want (external screen connected/disconnected). The caller issues a
+ * vid_restart, which destroys and recreates the window on the right screen.
+ */
+qboolean GLimp_DisplayRelocationNeeded( void )
+{
+	if ( !SDL_window )
+		return qfalse;
+	return GLimp_DesiredDisplayIndex() != glimp_builtDisplayIndex ? qtrue : qfalse;
+}
+
+/*
+ * True when the GL surface is currently rendering on a non-primary (external)
+ * display. SDL routes mouse events to its on-screen view, so while the window
+ * lives on the external screen we read the physical mouse ourselves instead.
+ */
+qboolean GLimp_RenderingOnExternalDisplay( void )
+{
+	return ( SDL_window && glimp_builtDisplayIndex != 0 ) ? qtrue : qfalse;
+}
 
 cvar_t *r_allowSoftwareGL;
 cvar_t *r_allowResize;
@@ -250,12 +283,15 @@ static rserr_t GLimp_SetMode( int mode, qboolean fullscreen, qboolean noborder )
 	int width, height;
 	int modeWidth, modeHeight;
 	int windowWidth, windowHeight;
+	int displayIndex;
 	Uint32 flags;
 	const char *glstring;
 	SDL_DisplayMode desktopMode;
 
 	(void)noborder;
 	ri.Printf( PRINT_ALL, "Initializing OpenGL ES 1.1 display (SDL2)\n" );
+
+	displayIndex = GLimp_DesiredDisplayIndex();
 
 	modeWidth = 0;
 	modeHeight = 0;
@@ -294,7 +330,7 @@ static rserr_t GLimp_SetMode( int mode, qboolean fullscreen, qboolean noborder )
 	fullscreen = qtrue;
 	glConfig.isFullscreen = qtrue;
 
-	if ( SDL_GetDesktopDisplayMode( 0, &desktopMode ) == 0 )
+	if ( SDL_GetDesktopDisplayMode( displayIndex, &desktopMode ) == 0 )
 	{
 		windowWidth = desktopMode.w;
 		windowHeight = desktopMode.h;
@@ -336,13 +372,18 @@ static rserr_t GLimp_SetMode( int mode, qboolean fullscreen, qboolean noborder )
 		SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8 );
 		SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 8 );
 
-		SDL_window = SDL_CreateWindow( CLIENT_WINDOW_TITLE, SDL_WINDOWPOS_CENTERED,
-			SDL_WINDOWPOS_CENTERED, windowWidth, windowHeight, flags );
+		SDL_window = SDL_CreateWindow( CLIENT_WINDOW_TITLE,
+			SDL_WINDOWPOS_CENTERED_DISPLAY( displayIndex ),
+			SDL_WINDOWPOS_CENTERED_DISPLAY( displayIndex ), windowWidth, windowHeight, flags );
 		if ( !SDL_window )
 		{
 			ri.Printf( PRINT_ALL, "SDL_CreateWindow failed: %s\n", SDL_GetError() );
 			return RSERR_INVALID_MODE;
 		}
+
+		glimp_builtDisplayIndex = displayIndex;
+		ri.Printf( PRINT_ALL, "GL surface on display %d of %d\n",
+			displayIndex, SDL_GetNumVideoDisplays() );
 
 		glContext = SDL_GL_CreateContext( SDL_window );
 		if ( !glContext )

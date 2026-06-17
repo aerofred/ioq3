@@ -12,7 +12,29 @@
 static qboolean inputInited = qfalse;
 static void *in_windowData = NULL;
 
+/* Implemented in sdl_glimp_ios.c: detect an external-display connect/disconnect
+ * so we can move the GL surface to the right screen via vid_restart. */
+extern qboolean GLimp_DisplayRelocationNeeded( void );
+
 static void IN_IosRegisterCommands( void );
+
+static void IN_IosCheckDisplayHotplug( void )
+{
+	static qboolean relocatePending = qfalse;
+
+	if( GLimp_DisplayRelocationNeeded() )
+	{
+		if( !relocatePending )
+		{
+			relocatePending = qtrue;
+			Cbuf_AddText( "vid_restart\n" );
+		}
+	}
+	else
+	{
+		relocatePending = qfalse;
+	}
+}
 
 static void IN_ProcessEvent( SDL_Event *event )
 {
@@ -85,6 +107,7 @@ void IN_Frame( void )
 	IN_Mouse_UpdateGrab();
 	IN_IosGamepadFrame();
 	IN_TouchFrame();
+	IN_IosCheckDisplayHotplug();
 }
 
 void IN_InitKeyLockStates( void )
@@ -103,6 +126,7 @@ void IN_Init( void *windowData )
 	SDL_InitSubSystem( SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER | SDL_INIT_JOYSTICK );
 	IN_Keyboard_Init();
 	IN_Mouse_Init();
+	IOS_Mouse_Init();
 	IN_TouchInit();
 	IN_IosGamepadInit();
 	IN_IosRegisterCommands();
@@ -115,6 +139,7 @@ void IN_Shutdown( void )
 		return;
 	IN_Keyboard_Shutdown();
 	IN_Mouse_Shutdown();
+	IOS_Mouse_Shutdown();
 	IN_IosGamepadShutdown();
 	IN_TouchShutdown();
 	SDL_QuitSubSystem( SDL_INIT_GAMECONTROLLER | SDL_INIT_JOYSTICK );

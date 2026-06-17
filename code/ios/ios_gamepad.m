@@ -1,4 +1,5 @@
 #include "ios_gamepad.h"
+#include "ios_layer.h"
 #include "../client/client.h"
 #include "../client/cl_touch.h"
 #include "../sdl/sdl_input_ios_gamepad.h"
@@ -369,6 +370,12 @@ static NSDictionary<NSString *, NSString *> *IOS_GamepadInputDisplayNames( void 
 }
 
 - (void)handleGamepad:(GCExtendedGamepad *)pad {
+	/* External display + menu: drive UI navigation with D-Pad / A / B. The
+	 * helper self-manages (no-op and key release when not applicable). */
+	IN_IosGamepadMenuNav( pad.dpad.up.isPressed, pad.dpad.down.isPressed,
+		pad.dpad.left.isPressed, pad.dpad.right.isPressed,
+		pad.buttonA.isPressed, pad.buttonB.isPressed );
+
 	if ( ![self shouldProcessInput] ) {
 		[self releaseManagedKeys];
 		[self releaseMoveAxesIfManaging];
@@ -1333,4 +1340,95 @@ void IOS_Gamepad_PresentSettings( void )
 		nav.modalPresentationStyle = UIModalPresentationFormSheet;
 		[IOS_PresentRootViewController() presentViewController:nav animated:YES completion:nil];
 	} );
+}
+
+#pragma mark - Physical mouse decoupled from the SDL render window
+
+/*
+ * When the game renders on an external display SDL's window leaves the device,
+ * so SDL stops receiving mouse motion/buttons (it routes them to the focused
+ * on-screen view, which no longer exists on this screen). We read GCMouse
+ * directly here and feed the engine, chaining SDL's own handlers so the normal
+ * on-device path is untouched. Our contribution is gated on the surface
+ * actually being on the external screen to avoid double input otherwise.
+ */
+extern qboolean GLimp_RenderingOnExternalDisplay( void );
+
+static id sgMouseConnectObserver = nil;
+static NSMutableSet *sgAttachedMice = nil;
+
+API_AVAILABLE(ios(14.0))
+static void SG_ChainMouseButton( GCControllerButtonInput *btn, int key )
+{
+	if ( !btn ) return;
+	GCControllerButtonValueChangedHandler prev = btn.pressedChangedHandler;
+	btn.pressedChangedHandler = ^( GCControllerButtonInput *b, float value, BOOL pressed ) {
+		if ( prev ) prev( b, value, pressed );
+		if ( pressed ) ios_dbgGCBtn++;
+		if ( GLimp_RenderingOnExternalDisplay() ) {
+			Com_QueueEvent( 0, SE_KEY, key, pressed ? qtrue : qfalse, 0, NULL );
+		}
+	};
+}
+
+API_AVAILABLE(ios(14.0))
+static void SG_AttachMouse( GCMouse *mouse )
+{
+	GCMouseInput *mi;
+	NSValue *token;
+
+	if ( !mouse ) return;
+	if ( !sgAttachedMice ) sgAttachedMice = [NSMutableSet set];
+	token = [NSValue valueWithNonretainedObject:mouse];
+	if ( [sgAttachedMice containsObject:token] ) return;
+	[sgAttachedMice addObject:token];
+
+	mi = mouse.mouseInput;
+	if ( !mi ) return;
+
+	NSLog( @"[EXTDBG] SG_AttachMouse: chained GCMouse handler (prev=%@)",
+		mi.mouseMovedHandler ? @"SDL" : @"none" );
+
+	GCMouseMoved prevMoved = mi.mouseMovedHandler;
+	mi.mouseMovedHandler = ^( GCMouseInput *m, float deltaX, float deltaY ) {
+		if ( prevMoved ) prevMoved( m, deltaX, deltaY );
+		ios_dbgGCMove++;
+		ios_dbgGCGate = GLimp_RenderingOnExternalDisplay() ? 1 : 0;
+		ios_dbgGCLastDx = (int)deltaX;
+		ios_dbgGCLastDy = -(int)deltaY;
+		if ( GLimp_RenderingOnExternalDisplay() ) {
+			int dx = (int)deltaX;
+			int dy = -(int)deltaY;
+			if ( dx || dy ) Com_QueueEvent( 0, SE_MOUSE, dx, dy, 0, NULL );
+		}
+	};
+
+	SG_ChainMouseButton( mi.leftButton, K_MOUSE1 );
+	SG_ChainMouseButton( mi.rightButton, K_MOUSE2 );
+	SG_ChainMouseButton( mi.middleButton, K_MOUSE3 );
+}
+
+void IOS_Mouse_Init( void )
+{
+	IOS_Gamepad_OnMain( ^{
+		if ( @available(iOS 14.0, *) ) {
+			for ( GCMouse *mouse in GCMouse.mice ) {
+				SG_AttachMouse( mouse );
+			}
+			if ( !sgMouseConnectObserver ) {
+				sgMouseConnectObserver = [NSNotificationCenter.defaultCenter
+					addObserverForName:GCMouseDidConnectNotification object:nil
+					queue:NSOperationQueue.mainQueue usingBlock:^( NSNotification *note ) {
+						if ( @available(iOS 14.0, *) ) {
+							SG_AttachMouse( note.object );
+						}
+					}];
+			}
+		}
+	} );
+}
+
+void IOS_Mouse_Shutdown( void )
+{
+	/* Handlers are chained and self-gated; nothing to tear down. */
 }

@@ -213,6 +213,22 @@ static qboolean Touch_HideControlsForHardwareInput( void )
 #endif
 }
 
+#ifdef IOS
+/*
+ * External display + physical keyboard and mouse: the game and menus render on
+ * the external screen, the player uses the hardware, and the device shows no
+ * controls at all (an invisible trackpad that still moves the menu cursor).
+ */
+static qboolean Touch_ExternalKeyboardMouse( void )
+{
+	if( touchEditMode )
+		return qfalse;
+	return IOS_Layer_HasExternalScreen() &&
+		IOS_Layer_HasHardwareKeyboard() &&
+		IOS_Layer_HasHardwareMouse();
+}
+#endif
+
 static qboolean Touch_IsButtonZone( touchZone_t zone )
 {
 	return zone == TOUCH_ZONE_JUMP ||
@@ -750,6 +766,18 @@ void IN_TouchSyncLayout( int width, int height, float scale )
 	IOS_Layer_GetLayout( &layout );
 	screenWidth = (int)( layout.width * layout.scale );
 	screenHeight = (int)( layout.height * layout.scale );
+#ifdef IOS
+	/* With an external display the GL drawable is the external screen, but
+	 * touches happen on the device overlay. Size the touch space from the
+	 * device layout (in pixels) rather than the external drawable. */
+	if( IOS_Layer_HasExternalScreen() )
+	{
+		touchScale = layout.scale > 0.0f ? layout.scale : touchScale;
+		touchWidth = screenWidth > 0 ? screenWidth : touchWidth;
+		touchHeight = screenHeight > 0 ? screenHeight : touchHeight;
+		return;
+	}
+#endif
 	if( screenWidth > touchWidth )
 		touchWidth = screenWidth;
 	if( screenHeight > touchHeight )
@@ -827,6 +855,11 @@ static void IN_TouchUIMouse( float x, float y, qboolean down, qboolean move )
 	else if( touchUICursorY > 480.0f )
 		touchUICursorY = 480.0f;
 
+#ifdef IOS
+	ios_dbgUIMouse++;
+	ios_dbgUILastDx = dx;
+	ios_dbgUILastDy = dy;
+#endif
 	Com_QueueEvent( 0, SE_MOUSE, dx, dy, 0, NULL );
 }
 
@@ -887,6 +920,15 @@ void IN_TouchFinger( long long fingerId, float nx, float ny, qboolean down, qboo
 	float x = nx * touchWidth;
 	float y = ny * touchHeight;
 
+#ifdef IOS
+	if( !motion && down )
+		ios_dbgTouchDown++;
+	else if( motion )
+		ios_dbgTouchMove++;
+	else
+		ios_dbgTouchUp++;
+#endif
+
 	if( !in_touch || !in_touch->integer )
 		return;
 
@@ -897,6 +939,12 @@ void IN_TouchFinger( long long fingerId, float nx, float ny, qboolean down, qboo
 		Touch_HandleGamepadConfigFinger( fingerId, x, y, down, motion );
 		return;
 	}
+
+	/* Hardware keyboard+mouse on an external display: gameplay is driven by the
+	 * mouse and keyboard, so the device surface is inert in-game. In menus it
+	 * still works as a relative trackpad for the cursor. */
+	if( Touch_ExternalKeyboardMouse() && !IN_TouchInUIMode() )
+		return;
 #endif
 
 	if( IN_TouchInUIMode() )
@@ -1101,6 +1149,12 @@ void IN_TouchFinger( long long fingerId, float nx, float ny, qboolean down, qboo
 
 void IN_TouchFrame( void )
 {
+#ifdef IOS
+	ios_dbgCatcher = Key_GetCatcher();
+	ios_dbgClcState = clc.state;
+	ios_dbgInUI = IN_TouchInUIMode() ? 1 : 0;
+	ios_dbgExtKBM = Touch_ExternalKeyboardMouse() ? 1 : 0;
+#endif
 	if( !in_touch || !in_touch->integer )
 		return;
 	if( touchPendingFireUpFrames > 0 && --touchPendingFireUpFrames == 0 )
@@ -1246,6 +1300,15 @@ void IN_TouchDraw( void )
 		IOS_Layer_HideTouchControls( touchMode );
 		return;
 	}
+
+#ifdef IOS
+	if( Touch_ExternalKeyboardMouse() )
+	{
+		IOS_Layer_SetTouchGamepadMode( qfalse );
+		IOS_Layer_HideTouchControls( touchMode );
+		return;
+	}
+#endif
 
 #ifdef IOS
 	Touch_ApplyGamepadMode( Touch_GamepadOverridesGameplay() );
