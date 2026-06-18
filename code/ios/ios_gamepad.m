@@ -1364,7 +1364,6 @@ static void SG_ChainMouseButton( GCControllerButtonInput *btn, int key )
 	GCControllerButtonValueChangedHandler prev = btn.pressedChangedHandler;
 	btn.pressedChangedHandler = ^( GCControllerButtonInput *b, float value, BOOL pressed ) {
 		if ( prev ) prev( b, value, pressed );
-		if ( pressed ) ios_dbgGCBtn++;
 		if ( GLimp_RenderingOnExternalDisplay() ) {
 			Com_QueueEvent( 0, SE_KEY, key, pressed ? qtrue : qfalse, 0, NULL );
 		}
@@ -1386,16 +1385,9 @@ static void SG_AttachMouse( GCMouse *mouse )
 	mi = mouse.mouseInput;
 	if ( !mi ) return;
 
-	NSLog( @"[EXTDBG] SG_AttachMouse: chained GCMouse handler (prev=%@)",
-		mi.mouseMovedHandler ? @"SDL" : @"none" );
-
 	GCMouseMoved prevMoved = mi.mouseMovedHandler;
 	mi.mouseMovedHandler = ^( GCMouseInput *m, float deltaX, float deltaY ) {
 		if ( prevMoved ) prevMoved( m, deltaX, deltaY );
-		ios_dbgGCMove++;
-		ios_dbgGCGate = GLimp_RenderingOnExternalDisplay() ? 1 : 0;
-		ios_dbgGCLastDx = (int)deltaX;
-		ios_dbgGCLastDy = -(int)deltaY;
 		if ( GLimp_RenderingOnExternalDisplay() ) {
 			int dx = (int)deltaX;
 			int dy = -(int)deltaY;

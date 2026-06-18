@@ -855,11 +855,6 @@ static void IN_TouchUIMouse( float x, float y, qboolean down, qboolean move )
 	else if( touchUICursorY > 480.0f )
 		touchUICursorY = 480.0f;
 
-#ifdef IOS
-	ios_dbgUIMouse++;
-	ios_dbgUILastDx = dx;
-	ios_dbgUILastDy = dy;
-#endif
 	Com_QueueEvent( 0, SE_MOUSE, dx, dy, 0, NULL );
 }
 
@@ -919,15 +914,6 @@ void IN_TouchFinger( long long fingerId, float nx, float ny, qboolean down, qboo
 	touchFinger_t *finger;
 	float x = nx * touchWidth;
 	float y = ny * touchHeight;
-
-#ifdef IOS
-	if( !motion && down )
-		ios_dbgTouchDown++;
-	else if( motion )
-		ios_dbgTouchMove++;
-	else
-		ios_dbgTouchUp++;
-#endif
 
 	if( !in_touch || !in_touch->integer )
 		return;
@@ -1149,12 +1135,6 @@ void IN_TouchFinger( long long fingerId, float nx, float ny, qboolean down, qboo
 
 void IN_TouchFrame( void )
 {
-#ifdef IOS
-	ios_dbgCatcher = Key_GetCatcher();
-	ios_dbgClcState = clc.state;
-	ios_dbgInUI = IN_TouchInUIMode() ? 1 : 0;
-	ios_dbgExtKBM = Touch_ExternalKeyboardMouse() ? 1 : 0;
-#endif
 	if( !in_touch || !in_touch->integer )
 		return;
 	if( touchPendingFireUpFrames > 0 && --touchPendingFireUpFrames == 0 )
