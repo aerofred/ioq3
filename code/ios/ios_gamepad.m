@@ -1399,8 +1399,6 @@ static void SG_AttachMouse( GCMouse *mouse )
 	GCMouseMoved prevMoved = mi.mouseMovedHandler;
 	mi.mouseMovedHandler = ^( GCMouseInput *m, float deltaX, float deltaY ) {
 		if ( prevMoved ) prevMoved( m, deltaX, deltaY );
-		ios_dbgGCMove++;
-		ios_dbgGCGate = GLimp_RenderingOnExternalDisplay() ? 1 : 0;
 		if ( GLimp_RenderingOnExternalDisplay() ) {
 			int dx = (int)deltaX;
 			int dy = -(int)deltaY;

@@ -44,16 +44,7 @@ typedef struct iosTouchOverlayState_s
 
 static iosTouchOverlayState_t iosTouchOverlay;
 
-/* temp input debug */
-volatile int ios_dbgTouchDown = 0;
-volatile int ios_dbgTouchMove = 0;
-volatile int ios_dbgUIMouse = 0;
-volatile int ios_dbgGCMove = 0;
-volatile int ios_dbgGCGate = 0;
-volatile int ios_dbgCatcher = 0;
-volatile int ios_dbgClcState = 0;
-volatile int ios_dbgInUI = 0;
-volatile int ios_dbgInTouch = -1;
+
 extern qboolean GLimp_RenderingOnExternalDisplay( void );
 
 @interface SGTouchOverlayView : UIView
@@ -309,8 +300,20 @@ static CGRect IOS_RectFromPixelCenter( float x, float y, float radius, CGFloat f
 	CGFloat alpha;
 	(void)rect;
 
-	if( !ctx || !iosOverlayVisible || !iosTouchOverlay.visible )
+	if( !ctx )
 		return;
+
+	if( !iosOverlayVisible || !iosTouchOverlay.visible )
+	{
+		/* Even when no on-screen controls are shown (hardware keyboard+mouse on
+		 * an external display), draw a near-invisible fill so the overlay layer
+		 * stays non-empty. iOS drops an entirely empty transparent window out of
+		 * the touch/pointer delivery chain, which kills physical mouse and touch
+		 * input on the device. */
+		CGContextSetFillColorWithColor( ctx, [UIColor colorWithWhite:0.0 alpha:0.01].CGColor );
+		CGContextFillRect( ctx, self.bounds );
+		return;
+	}
 
 	alpha = iosTouchOverlay.opacity;
 	if( alpha < 0.05 )
@@ -533,43 +536,12 @@ void IOS_Layer_Tick( void )
 	IOS_HideSystemChrome();
 	IOS_UpdateSafeArea();
 	IOS_PromoteOverlayForExternalScreen();
-	{
-		static int dbgTick = 0;
-		if( ( ++dbgTick % 60 ) == 0 )
-		{
-			BOOL key = iosTouchWindow.isKeyWindow;
-			BOOL onMain = ( iosTouchWindow.screen == UIScreen.mainScreen );
-			int mice = 0;
-			if( @available( iOS 14.0, * ) )
-				mice = (int)GCMouse.mice.count;
-			NSLog( @"[EXTDBG] ext=%d roe=%d key=%d main=%d mice=%d inTouch=%d | touch d=%d m=%d | uiMouse=%d | gcMouse=%d gate=%d | catch=%d clc=%d ui=%d",
-				iosExternalScreenPresent, GLimp_RenderingOnExternalDisplay() ? 1 : 0,
-				key, onMain, mice, ios_dbgInTouch,
-				ios_dbgTouchDown, ios_dbgTouchMove, ios_dbgUIMouse,
-				ios_dbgGCMove, ios_dbgGCGate,
-				ios_dbgCatcher, ios_dbgClcState, ios_dbgInUI );
-			long act = -99;
-			if( @available( iOS 13.0, * ) )
-				act = iosTouchWindow.windowScene ? (long)iosTouchWindow.windowScene.activationState : -98;
-			NSLog( @"[EXTWIN] sceneAct=%ld windows=%lu winHidden=%d viewHidden=%d viewUIE=%d winUIE=%d level=%.0f overlayVisFlag=%d isOverlay=%d",
-				act, (unsigned long)UIApplication.sharedApplication.windows.count,
-				iosTouchWindow.hidden, iosTouchView.hidden,
-				iosTouchView.userInteractionEnabled, iosTouchWindow.userInteractionEnabled,
-				(double)iosTouchWindow.windowLevel, iosOverlayVisible,
-				1 );
-			{
-				int wi = 0;
-				for( UIWindow *w in UIApplication.sharedApplication.windows )
-				{
-					BOOL onMainW = ( w.screen == UIScreen.mainScreen );
-					NSLog( @"[EXTWIN]  #%d %@ main=%d key=%d hidden=%d uie=%d level=%.0f isOurs=%d",
-						wi++, NSStringFromClass( w.class ), onMainW, w.isKeyWindow,
-						w.hidden, w.userInteractionEnabled, (double)w.windowLevel,
-						( w == iosTouchWindow ) );
-				}
-			}
-		}
-	}
+	/* Redraw the overlay every frame so its layer keeps producing content (see
+	 * drawRect): this is what keeps the device in iOS's touch/pointer delivery
+	 * chain while the GL surface renders on an external display. */
+	IOS_OnMainAsync( ^{
+		[iosTouchView setNeedsDisplay];
+	} );
 }
 
 void IOS_Layer_SyncScreen( int width, int height, float scale )

@@ -857,9 +857,6 @@ static void IN_TouchUIMouse( float x, float y, qboolean down, qboolean move )
 	else if( touchUICursorY > 480.0f )
 		touchUICursorY = 480.0f;
 
-#ifdef IOS
-	ios_dbgUIMouse++;
-#endif
 	Com_QueueEvent( 0, SE_MOUSE, dx, dy, 0, NULL );
 }
 
@@ -919,10 +916,6 @@ void IN_TouchFinger( long long fingerId, float nx, float ny, qboolean down, qboo
 	touchFinger_t *finger;
 	float x = nx * touchWidth;
 	float y = ny * touchHeight;
-
-#ifdef IOS
-	if( motion ) ios_dbgTouchMove++; else if( down ) ios_dbgTouchDown++;
-#endif
 
 	if( !in_touch || !in_touch->integer )
 		return;
@@ -1144,16 +1137,6 @@ void IN_TouchFinger( long long fingerId, float nx, float ny, qboolean down, qboo
 
 void IN_TouchFrame( void )
 {
-#ifdef IOS
-	ios_dbgCatcher = Key_GetCatcher();
-	ios_dbgClcState = clc.state;
-	ios_dbgInUI = IN_TouchInUIMode() ? 1 : 0;
-	ios_dbgInTouch = in_touch ? in_touch->integer : -1;
-	/* Overlay maintenance (incl. key-window promotion needed for physical mouse
-	 * and touch delivery on an external display) must run every frame, even when
-	 * touch controls are disabled (in_touch 0). */
-	IOS_Layer_Tick();
-#endif
 	if( !in_touch || !in_touch->integer )
 		return;
 	if( touchPendingFireUpFrames > 0 && --touchPendingFireUpFrames == 0 )
