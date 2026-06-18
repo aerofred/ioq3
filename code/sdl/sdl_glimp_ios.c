@@ -23,6 +23,7 @@ void GLimp_AssignES1DesktopStubs( void );
 SDL_Window *SDL_window = NULL;
 static SDL_GLContext glContext = NULL;
 static int glimp_builtDisplayIndex = 0;
+static qboolean glimp_everInited = qfalse;
 
 /*
  * Target display index for the GL surface: when an external display is
@@ -291,7 +292,12 @@ static rserr_t GLimp_SetMode( int mode, qboolean fullscreen, qboolean noborder )
 	(void)noborder;
 	ri.Printf( PRINT_ALL, "Initializing OpenGL ES 1.1 display (SDL2)\n" );
 
-	displayIndex = GLimp_DesiredDisplayIndex();
+	/* Always create the very first window on the built-in display so the device
+	 * scene becomes the app's primary (input-receiving) scene. If an external
+	 * display is present, the hotplug check then relocates the GL surface to it
+	 * via vid_restart, which is the path that keeps device input working. */
+	displayIndex = glimp_everInited ? GLimp_DesiredDisplayIndex() : 0;
+	glimp_everInited = qtrue;
 
 	modeWidth = 0;
 	modeHeight = 0;

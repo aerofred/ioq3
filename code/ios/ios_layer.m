@@ -44,23 +44,16 @@ typedef struct iosTouchOverlayState_s
 
 static iosTouchOverlayState_t iosTouchOverlay;
 
-/* --- External-display input debugging (temporary instrumentation) --- */
+/* temp input debug */
 volatile int ios_dbgTouchDown = 0;
 volatile int ios_dbgTouchMove = 0;
-volatile int ios_dbgTouchUp = 0;
 volatile int ios_dbgUIMouse = 0;
-volatile int ios_dbgUILastDx = 0;
-volatile int ios_dbgUILastDy = 0;
 volatile int ios_dbgGCMove = 0;
-volatile int ios_dbgGCBtn = 0;
-volatile int ios_dbgGCLastDx = 0;
-volatile int ios_dbgGCLastDy = 0;
 volatile int ios_dbgGCGate = 0;
 volatile int ios_dbgCatcher = 0;
 volatile int ios_dbgClcState = 0;
 volatile int ios_dbgInUI = 0;
-volatile int ios_dbgExtKBM = 0;
-static const BOOL iosDebugHud = YES;
+volatile int ios_dbgInTouch = -1;
 extern qboolean GLimp_RenderingOnExternalDisplay( void );
 
 @interface SGTouchOverlayView : UIView
@@ -316,37 +309,6 @@ static CGRect IOS_RectFromPixelCenter( float x, float y, float radius, CGFloat f
 	CGFloat alpha;
 	(void)rect;
 
-	if( ctx && iosDebugHud )
-	{
-		BOOL key = self.window.isKeyWindow;
-		BOOL onMain = ( self.window.screen == UIScreen.mainScreen );
-		BOOL roe = GLimp_RenderingOnExternalDisplay() ? YES : NO;
-		NSArray<NSString *> *lines = @[
-			[NSString stringWithFormat:@"ext=%d roe=%d key=%d main=%d",
-				iosExternalScreenPresent, roe, key, onMain],
-			[NSString stringWithFormat:@"touch d=%d m=%d u=%d",
-				ios_dbgTouchDown, ios_dbgTouchMove, ios_dbgTouchUp],
-			[NSString stringWithFormat:@"uiMouse n=%d last=%d,%d",
-				ios_dbgUIMouse, ios_dbgUILastDx, ios_dbgUILastDy],
-			[NSString stringWithFormat:@"gcMouse n=%d btn=%d last=%d,%d gate=%d",
-				ios_dbgGCMove, ios_dbgGCBtn, ios_dbgGCLastDx, ios_dbgGCLastDy, ios_dbgGCGate],
-			[NSString stringWithFormat:@"catch=%d clc=%d ui=%d kbm=%d",
-				ios_dbgCatcher, ios_dbgClcState, ios_dbgInUI, ios_dbgExtKBM]
-		];
-		CGFloat y = 40.0;
-		NSDictionary *attrs = @{
-			NSFontAttributeName: [UIFont boldSystemFontOfSize:13.0],
-			NSForegroundColorAttributeName: [UIColor greenColor]
-		};
-		CGContextSetFillColorWithColor( ctx, [UIColor colorWithWhite:0.0 alpha:0.55].CGColor );
-		CGContextFillRect( ctx, CGRectMake( 8.0, 36.0, 320.0, (CGFloat)lines.count * 17.0 + 8.0 ) );
-		for( NSString *line in lines )
-		{
-			[line drawAtPoint:CGPointMake( 14.0, y ) withAttributes:attrs];
-			y += 17.0;
-		}
-	}
-
 	if( !ctx || !iosOverlayVisible || !iosTouchOverlay.visible )
 		return;
 
@@ -571,27 +533,41 @@ void IOS_Layer_Tick( void )
 	IOS_HideSystemChrome();
 	IOS_UpdateSafeArea();
 	IOS_PromoteOverlayForExternalScreen();
-	if( iosDebugHud )
 	{
 		static int dbgTick = 0;
-		IOS_OnMainAsync( ^{
-			[iosTouchView setNeedsDisplay];
-		} );
 		if( ( ++dbgTick % 60 ) == 0 )
 		{
 			BOOL key = iosTouchWindow.isKeyWindow;
 			BOOL onMain = ( iosTouchWindow.screen == UIScreen.mainScreen );
-			int roe = GLimp_RenderingOnExternalDisplay() ? 1 : 0;
 			int mice = 0;
 			if( @available( iOS 14.0, * ) )
 				mice = (int)GCMouse.mice.count;
-			NSLog( @"[EXTDBG] ext=%d roe=%d key=%d main=%d mice=%d | touch d=%d m=%d u=%d | "
-				@"uiMouse=%d(%d,%d) | gcMouse=%d btn=%d(%d,%d) gate=%d | catch=%d clc=%d ui=%d kbm=%d",
-				iosExternalScreenPresent, roe, key, onMain, mice,
-				ios_dbgTouchDown, ios_dbgTouchMove, ios_dbgTouchUp,
-				ios_dbgUIMouse, ios_dbgUILastDx, ios_dbgUILastDy,
-				ios_dbgGCMove, ios_dbgGCBtn, ios_dbgGCLastDx, ios_dbgGCLastDy, ios_dbgGCGate,
-				ios_dbgCatcher, ios_dbgClcState, ios_dbgInUI, ios_dbgExtKBM );
+			NSLog( @"[EXTDBG] ext=%d roe=%d key=%d main=%d mice=%d inTouch=%d | touch d=%d m=%d | uiMouse=%d | gcMouse=%d gate=%d | catch=%d clc=%d ui=%d",
+				iosExternalScreenPresent, GLimp_RenderingOnExternalDisplay() ? 1 : 0,
+				key, onMain, mice, ios_dbgInTouch,
+				ios_dbgTouchDown, ios_dbgTouchMove, ios_dbgUIMouse,
+				ios_dbgGCMove, ios_dbgGCGate,
+				ios_dbgCatcher, ios_dbgClcState, ios_dbgInUI );
+			long act = -99;
+			if( @available( iOS 13.0, * ) )
+				act = iosTouchWindow.windowScene ? (long)iosTouchWindow.windowScene.activationState : -98;
+			NSLog( @"[EXTWIN] sceneAct=%ld windows=%lu winHidden=%d viewHidden=%d viewUIE=%d winUIE=%d level=%.0f overlayVisFlag=%d isOverlay=%d",
+				act, (unsigned long)UIApplication.sharedApplication.windows.count,
+				iosTouchWindow.hidden, iosTouchView.hidden,
+				iosTouchView.userInteractionEnabled, iosTouchWindow.userInteractionEnabled,
+				(double)iosTouchWindow.windowLevel, iosOverlayVisible,
+				1 );
+			{
+				int wi = 0;
+				for( UIWindow *w in UIApplication.sharedApplication.windows )
+				{
+					BOOL onMainW = ( w.screen == UIScreen.mainScreen );
+					NSLog( @"[EXTWIN]  #%d %@ main=%d key=%d hidden=%d uie=%d level=%.0f isOurs=%d",
+						wi++, NSStringFromClass( w.class ), onMainW, w.isKeyWindow,
+						w.hidden, w.userInteractionEnabled, (double)w.windowLevel,
+						( w == iosTouchWindow ) );
+				}
+			}
 		}
 	}
 }

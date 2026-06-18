@@ -52,21 +52,15 @@ void IOS_Layer_OpenTouchSettings( void );
 void IOS_Layer_SetTouchGamepadMode( qboolean gamepadMode );
 void IOS_Layer_AttachToWindow( void );
 
-/* --- External-display input debugging (temporary instrumentation) --- */
+/* temp input debug */
 extern volatile int ios_dbgTouchDown;
 extern volatile int ios_dbgTouchMove;
-extern volatile int ios_dbgTouchUp;
 extern volatile int ios_dbgUIMouse;
-extern volatile int ios_dbgUILastDx;
-extern volatile int ios_dbgUILastDy;
 extern volatile int ios_dbgGCMove;
-extern volatile int ios_dbgGCBtn;
-extern volatile int ios_dbgGCLastDx;
-extern volatile int ios_dbgGCLastDy;
 extern volatile int ios_dbgGCGate;
 extern volatile int ios_dbgCatcher;
 extern volatile int ios_dbgClcState;
 extern volatile int ios_dbgInUI;
-extern volatile int ios_dbgExtKBM;
+extern volatile int ios_dbgInTouch;
 
 #endif

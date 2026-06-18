@@ -577,9 +577,11 @@ static void Touch_HandleGamepadConfigFinger( long long fingerId, float x, float 
 		finger = Touch_FindFinger( fingerId );
 		if( !finger )
 		{
-			touchZone_t zone = Touch_Classify( x, y );
-
-			if( zone != TOUCH_ZONE_CONFIG )
+			/* Hit-test the PAD config button directly. Touch_Classify drops the
+			 * CONFIG zone when a hardware keyboard+mouse is present, which would
+			 * otherwise make the gamepad PAD button untappable. */
+			if( !Touch_PointNear( x, y, Touch_EdgeX( in_touchConfigX ),
+				Touch_EdgeY( in_touchConfigY ), Touch_ButtonRadius() ) )
 				return;
 
 			finger = Touch_AllocFinger( fingerId );
@@ -857,8 +859,6 @@ static void IN_TouchUIMouse( float x, float y, qboolean down, qboolean move )
 
 #ifdef IOS
 	ios_dbgUIMouse++;
-	ios_dbgUILastDx = dx;
-	ios_dbgUILastDy = dy;
 #endif
 	Com_QueueEvent( 0, SE_MOUSE, dx, dy, 0, NULL );
 }
@@ -921,12 +921,7 @@ void IN_TouchFinger( long long fingerId, float nx, float ny, qboolean down, qboo
 	float y = ny * touchHeight;
 
 #ifdef IOS
-	if( !motion && down )
-		ios_dbgTouchDown++;
-	else if( motion )
-		ios_dbgTouchMove++;
-	else
-		ios_dbgTouchUp++;
+	if( motion ) ios_dbgTouchMove++; else if( down ) ios_dbgTouchDown++;
 #endif
 
 	if( !in_touch || !in_touch->integer )
@@ -1153,7 +1148,11 @@ void IN_TouchFrame( void )
 	ios_dbgCatcher = Key_GetCatcher();
 	ios_dbgClcState = clc.state;
 	ios_dbgInUI = IN_TouchInUIMode() ? 1 : 0;
-	ios_dbgExtKBM = Touch_ExternalKeyboardMouse() ? 1 : 0;
+	ios_dbgInTouch = in_touch ? in_touch->integer : -1;
+	/* Overlay maintenance (incl. key-window promotion needed for physical mouse
+	 * and touch delivery on an external display) must run every frame, even when
+	 * touch controls are disabled (in_touch 0). */
+	IOS_Layer_Tick();
 #endif
 	if( !in_touch || !in_touch->integer )
 		return;
@@ -1185,7 +1184,6 @@ void IN_TouchFrame( void )
 		IOS_Gamepad_SetOnScreenMoveEngaged( qfalse );
 	}
 #endif
-	IOS_Layer_Tick();
 	(void)in_touchMoveSensitivity;
 	(void)in_touchLookX;
 	(void)in_touchLookY;
@@ -1302,15 +1300,6 @@ void IN_TouchDraw( void )
 	}
 
 #ifdef IOS
-	if( Touch_ExternalKeyboardMouse() )
-	{
-		IOS_Layer_SetTouchGamepadMode( qfalse );
-		IOS_Layer_HideTouchControls( touchMode );
-		return;
-	}
-#endif
-
-#ifdef IOS
 	Touch_ApplyGamepadMode( Touch_GamepadOverridesGameplay() );
 #endif
 
@@ -1330,6 +1319,15 @@ void IN_TouchDraw( void )
 		return;
 	}
 	IOS_Layer_SetTouchGamepadMode( qfalse );
+
+	/* Hardware keyboard+mouse on an external display: no on-screen controls
+	 * (checked after the gamepad case so the PAD config button still shows
+	 * when a gamepad is also connected). */
+	if( Touch_ExternalKeyboardMouse() )
+	{
+		IOS_Layer_HideTouchControls( touchMode );
+		return;
+	}
 #endif
 
 	stick = in_touchStickSize->value * Touch_ControlBase();

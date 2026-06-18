@@ -423,7 +423,10 @@ static NSDictionary<NSString *, NSString *> *IOS_GamepadInputDisplayNames( void 
 
 		if ( fabsf( lx ) > 0.01f || fabsf( ly ) > 0.01f ) {
 			float sensitivity = MAX( 0.25f, CL_GetCvarFloat( "in_touchMoveSensitivity" ) );
-			int forward = (int)lrintf( ly * 127.0f * sensitivity );
+			/* GameController yAxis is +1 when the stick is pushed up; the engine
+			 * forward axis expects the opposite sign, so negate to avoid an
+			 * inverted forward/back movement. */
+			int forward = (int)lrintf( -ly * 127.0f * sensitivity );
 			forward = MAX( -127, MIN( 127, forward ) );
 			[self sendMoveAxesYaw:0 forward:forward];
 			_isManagingMoveAxes = YES;
@@ -442,6 +445,13 @@ static NSDictionary<NSString *, NSString *> *IOS_GamepadInputDisplayNames( void 
 }
 
 - (BOOL)tryActivateSDLEnginePath {
+	/* The SDL joystick path and our direct GameController usage fight over the
+	 * controller's valueChangedHandler, leaving SDL unable to read any input
+	 * (handler ends up nil, every button reads 0). The native path polls the
+	 * GCExtendedGamepad state directly every frame and works reliably, so we
+	 * always use it instead of SDL's joystick path. */
+	return NO;
+
 	IN_IosRefreshJoystick( qfalse );
 	if ( Sys_SDLJoystickCount() <= 0 ) return NO;
 	if ( _usingSDLEnginePath && Sys_SDLGamepadOpened() > 0 ) return YES;
@@ -1335,10 +1345,11 @@ void IOS_Touch_PresentSettings( void )
 void IOS_Gamepad_PresentSettings( void )
 {
 	IOS_Gamepad_OnMain( ^{
+		UIViewController *root = IOS_PresentRootViewController();
 		SGGamepadSettingsViewController *settings = [[SGGamepadSettingsViewController alloc] init];
 		UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:settings];
 		nav.modalPresentationStyle = UIModalPresentationFormSheet;
-		[IOS_PresentRootViewController() presentViewController:nav animated:YES completion:nil];
+		[root presentViewController:nav animated:YES completion:nil];
 	} );
 }
 
@@ -1364,7 +1375,6 @@ static void SG_ChainMouseButton( GCControllerButtonInput *btn, int key )
 	GCControllerButtonValueChangedHandler prev = btn.pressedChangedHandler;
 	btn.pressedChangedHandler = ^( GCControllerButtonInput *b, float value, BOOL pressed ) {
 		if ( prev ) prev( b, value, pressed );
-		if ( pressed ) ios_dbgGCBtn++;
 		if ( GLimp_RenderingOnExternalDisplay() ) {
 			Com_QueueEvent( 0, SE_KEY, key, pressed ? qtrue : qfalse, 0, NULL );
 		}
@@ -1386,16 +1396,11 @@ static void SG_AttachMouse( GCMouse *mouse )
 	mi = mouse.mouseInput;
 	if ( !mi ) return;
 
-	NSLog( @"[EXTDBG] SG_AttachMouse: chained GCMouse handler (prev=%@)",
-		mi.mouseMovedHandler ? @"SDL" : @"none" );
-
 	GCMouseMoved prevMoved = mi.mouseMovedHandler;
 	mi.mouseMovedHandler = ^( GCMouseInput *m, float deltaX, float deltaY ) {
 		if ( prevMoved ) prevMoved( m, deltaX, deltaY );
 		ios_dbgGCMove++;
 		ios_dbgGCGate = GLimp_RenderingOnExternalDisplay() ? 1 : 0;
-		ios_dbgGCLastDx = (int)deltaX;
-		ios_dbgGCLastDy = -(int)deltaY;
 		if ( GLimp_RenderingOnExternalDisplay() ) {
 			int dx = (int)deltaX;
 			int dy = -(int)deltaY;
