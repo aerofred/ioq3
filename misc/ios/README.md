@@ -10,6 +10,8 @@ This repository now includes an initial iOS port path inspired by the local `Smo
 ## Prerequisites
 
 - macOS with Xcode and the iPhoneOS SDK
+- CMake 3.25 or newer installed through Homebrew, MacPorts or CMake.app (the build script also
+  finds these standard installations when launched from Xcode)
 - `baseq3/` at the repository root
 - an Apple Developer account if you want to install on a device
 
@@ -38,5 +40,21 @@ build/ios/ioquake3.app
 ## Notes
 
 - The script builds host-side QVMs first, then builds the iOS client.
+- Host QVM tools use the macOS SDK explicitly; their CMake configuration is
+  refreshed on each build to clear cached iPhone SDK settings from Xcode.
 - The generated app bundle is intended as a packaging baseline. Signing/deployment is still handled on the Apple side.
 - LAN multiplayer requires the local network entitlement text already declared in `Info.plist`.
+
+## Replacing game data on iOS
+
+Launch the app once, then open **Files > On My iPhone/iPad > ioquake3 > baseq3**.
+Bundled `.pk3` files are copied into this writable directory on launch. Replace
+them there, or add mod directories alongside `baseq3`. Fully quit the game before
+editing packs, then relaunch it to load the changes.
+
+Existing files are never overwritten by this setup. Missing bundled packs are
+copied again on the next launch. Packs in Documents take priority over bundled
+packs; the app bundle still provides the QVMs and default configuration.
+Configurations, downloads and mods from the previous private storage location
+are copied into Documents without replacing existing files. The old location is
+retained as a backup and is no longer searched by default.

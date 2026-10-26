@@ -17,6 +17,19 @@ set(Q3CPP ${TOOLS_DIR}/$<CONFIG>/q3cpp${HOST_EXECUTABLE_SUFFIX})
 set(Q3LCC ${TOOLS_DIR}/$<CONFIG>/q3lcc${HOST_EXECUTABLE_SUFFIX})
 set(Q3ASM ${TOOLS_DIR}/$<CONFIG>/q3asm${HOST_EXECUTABLE_SUFFIX})
 
+# These executables run on the build machine, including when targeting iOS.
+# Specify the macOS SDK instead of inheriting an iPhone SDK from Xcode or a
+# previous configuration of the nested build directory.
+set(QVM_HOST_ARGS)
+if(APPLE)
+    execute_process(COMMAND xcrun --sdk macosx --show-sdk-path
+        OUTPUT_VARIABLE QVM_HOST_SDK OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND_ERROR_IS_FATAL ANY)
+    list(APPEND QVM_HOST_ARGS
+        -DCMAKE_OSX_SYSROOT=${QVM_HOST_SDK}
+        -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0)
+endif()
+
 ExternalProject_Add(qvm_tools
     SOURCE_DIR ${CMAKE_SOURCE_DIR}/cmake/tools
     BINARY_DIR ${TOOLS_DIR}
@@ -25,6 +38,7 @@ ExternalProject_Add(qvm_tools
         -DCMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}
         -DCMAKE_MINIMUM_REQUIRED_VERSION=${CMAKE_MINIMUM_REQUIRED_VERSION}
         ${BUILD_TYPE_ARG}
+        ${QVM_HOST_ARGS}
     BUILD_ALWAYS TRUE
     BUILD_BYPRODUCTS ${Q3RCC} ${Q3CPP} ${Q3LCC} ${Q3ASM}
     INSTALL_COMMAND "")

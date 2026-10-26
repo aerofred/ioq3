@@ -115,6 +115,10 @@ static int Sys_Exec( void )
 
 #ifdef __APPLE__
 
+#ifdef IOS
+char *IOS_DefaultHomePath( const char *legacyPath );
+#endif
+
 /*
 ==================
 Sys_DefaultHomePath
@@ -139,7 +143,11 @@ static char *Sys_DefaultHomePath(void)
 		}
 	}
 
+#ifdef IOS
+	return IOS_DefaultHomePath( homePath );
+#else
 	return homePath;
+#endif
 }
 
 char *Sys_DefaultHomeConfigPath(void) { return Sys_DefaultHomePath(); }

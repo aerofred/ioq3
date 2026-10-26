@@ -1,4 +1,5 @@
 build*
+!/misc/ios/build-ios.sh
 misc/ios/sdl2-build/
 build/ios/
 *.swp
@@ -43,3 +44,5 @@ profile
 *.opensdf
 *.suo
 /.vs
+
+.claude/
