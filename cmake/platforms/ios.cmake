@@ -29,6 +29,7 @@ list(APPEND CLIENT_PLATFORM_SOURCES
     ${SOURCE_DIR}/ios/ios_touch_settings.m
     ${SOURCE_DIR}/ios/ios_gamepad.m
     ${SOURCE_DIR}/ios/ios_gamepad_look.c
+    ${SOURCE_DIR}/ios/ios_aim_assist.c
     ${SOURCE_DIR}/ios/ios_numpad.m
     ${SOURCE_DIR}/sdl/sdl_input_ios.c
     ${SOURCE_DIR}/sdl/sdl_input_ios_gamepad.c

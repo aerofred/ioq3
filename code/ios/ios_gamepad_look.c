@@ -1,4 +1,5 @@
 #include "ios_gamepad_look.h"
+#include "ios_aim_assist.h"
 
 #include "../client/client.h"
 #include "../qcommon/qcommon.h"
@@ -11,6 +12,7 @@ static cvar_t *in_gamepadLookInvert = NULL;
 
 void IOS_Gamepad_LookInit( void )
 {
+	IOS_AimAssist_Init();
 	in_gamepadLookAccel = Cvar_Get( "in_gamepadLookAccel", "2.0", CVAR_ARCHIVE );
 	in_gamepadLookScale = Cvar_Get( "in_gamepadLookScale", "12.0", CVAR_ARCHIVE );
 	in_gamepadLookInvert = Cvar_Get( "in_gamepadLookInvert", "0", CVAR_ARCHIVE );
@@ -48,8 +50,6 @@ void IOS_Gamepad_LookFromStick( float stickX, float stickY )
 	float ySign;
 	float curvedX;
 	float curvedY;
-	int dx;
-	int dy;
 
 	if ( Key_GetCatcher() & ( KEYCATCH_CONSOLE | KEYCATCH_MESSAGE | KEYCATCH_UI | KEYCATCH_CGAME ) ) {
 		return;
@@ -84,12 +84,6 @@ void IOS_Gamepad_LookFromStick( float stickX, float stickY )
 
 	ySign = ( in_gamepadLookInvert && in_gamepadLookInvert->integer ) ? 1.0f : -1.0f;
 
-	dx = (int)( curvedX * scale * sens );
-	dy = (int)( ySign * curvedY * scale * sens );
-
-	if ( dx == 0 && dy == 0 ) {
-		return;
-	}
-
-	Com_QueueEvent( 0, SE_MOUSE, dx, dy, 0, NULL );
+	IOS_AimAssist_QueueLook( curvedX * scale * sens,
+		ySign * curvedY * scale * sens, IOS_AIM_GAMEPAD );
 }

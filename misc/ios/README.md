@@ -45,6 +45,21 @@ build/ios/ioquake3.app
 - The generated app bundle is intended as a packaging baseline. Signing/deployment is still handled on the Apple side.
 - LAN multiplayer requires the local network entitlement text already declared in `Info.plist`.
 
+## Aim assist
+
+Enable **Aim Assist** in **Touch Controls** or **Gamepad > Settings**. Both
+switches control the same saved option, disabled by default. The console
+equivalent is `seta in_aimAssist 1` (`0` to disable).
+
+Touch look and the gamepad right stick slow down progressively near a visible,
+living opponent within six degrees of the crosshair and 2048 game units. The
+assist ignores teammates, invisible players, walls and closed doors. It does
+not snap to targets or fire automatically. Physical mouse input and menu
+navigation keep their normal sensitivity.
+
+Run the standalone behavior checks on the host with
+`sh misc/ios/tests/run-aim-assist.sh`.
+
 ## Replacing game data on iOS
 
 Launch the app once, then open **Files > On My iPhone/iPad > ioquake3 > baseq3**.

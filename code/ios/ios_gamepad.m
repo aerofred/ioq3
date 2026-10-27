@@ -11,6 +11,24 @@
 
 static void IOS_Gamepad_RefreshNativePresent( void );
 
+static UITableViewCell *IOS_AimAssistCell( id target )
+{
+	UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
+	cell.selectionStyle = UITableViewCellSelectionStyleNone;
+	cell.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.06];
+	cell.textLabel.text = @"Aim Assist";
+	cell.textLabel.textColor = UIColor.whiteColor;
+	cell.detailTextLabel.text = @"Precision slowdown for touch and gamepad";
+	cell.detailTextLabel.numberOfLines = 0;
+	cell.detailTextLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.55];
+	UISwitch *toggle = [[UISwitch alloc] init];
+	toggle.on = CL_GetCvarInt( "in_aimAssist" ) != 0;
+	toggle.onTintColor = [UIColor colorWithRed:0.88 green:0.54 blue:0.16 alpha:1.0];
+	[toggle addTarget:target action:@selector(aimAssistChanged:) forControlEvents:UIControlEventValueChanged];
+	cell.accessoryView = toggle;
+	return cell;
+}
+
 static NSString * const kGamepadBindingsKey = @"ioq3GamepadBindings";
 static NSString * const kGamepadSensitivityKey = @"ioq3GamepadSensitivity";
 static NSString * const kGamepadDeadZoneKey = @"ioq3GamepadDeadZone";
@@ -804,7 +822,8 @@ typedef NS_ENUM(NSInteger, SGTouchSettingRow) {
 	SGTouchSettingRowMoveHoriz,
 	SGTouchSettingRowFire,
 	SGTouchSettingRowEditLayout,
-	SGTouchSettingRowSensitivity
+	SGTouchSettingRowSensitivity,
+	SGTouchSettingRowAimAssist
 };
 
 @interface SGTouchSettingsViewController : UITableViewController
@@ -843,7 +862,12 @@ typedef NS_ENUM(NSInteger, SGTouchSettingRow) {
 }
 
 - (NSInteger)touchSettingsRowCount {
-	return [self touchMoveIsStick] ? 6 : 5;
+	return [self touchMoveIsStick] ? 7 : 6;
+}
+
+- (void)aimAssistChanged:(UISwitch *)sender {
+	Cvar_Set( "in_aimAssist", sender.isOn ? "1" : "0" );
+	Cbuf_AddText( "writeconfig\n" );
 }
 
 - (SGTouchSettingRow)touchSettingRowAtIndex:(NSInteger)row {
@@ -942,6 +966,9 @@ typedef NS_ENUM(NSInteger, SGTouchSettingRow) {
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
 	SGTouchSettingRow row = [self touchSettingRowAtIndex:indexPath.row];
+	if ( row == SGTouchSettingRowAimAssist ) {
+		return IOS_AimAssistCell( self );
+	}
 	if ( row == SGTouchSettingRowAim ) {
 		return [self touchSegmentCellWithTitle:@"Aim Control"
 			segments:@[ @"Stick", @"Screen" ]
@@ -1006,6 +1033,16 @@ typedef NS_ENUM(NSInteger, SGTouchSettingRow) {
 @end
 
 @implementation SGGamepadSettingsViewController
+
+- (void)viewWillAppear:(BOOL)animated {
+	[super viewWillAppear:animated];
+	[self.tableView reloadData];
+}
+
+- (void)aimAssistChanged:(UISwitch *)sender {
+	Cvar_Set( "in_aimAssist", sender.isOn ? "1" : "0" );
+	Cbuf_AddText( "writeconfig\n" );
+}
 
 - (void)viewDidLoad {
 	[super viewDidLoad];
@@ -1089,7 +1126,7 @@ typedef NS_ENUM(NSInteger, SGTouchSettingRow) {
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-	if ( section == 0 ) return 5;
+	if ( section == 0 ) return 6;
 	if ( section == 5 ) return 1;
 	NSString *sectionName = @[@"", @"Movement", @"Looking", @"Weapons", @"Misc"][section];
 	NSUInteger count = 0;
@@ -1112,6 +1149,9 @@ typedef NS_ENUM(NSInteger, SGTouchSettingRow) {
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
 	if ( indexPath.section == 0 ) {
+		if ( indexPath.row == 5 ) {
+			return IOS_AimAssistCell( self );
+		}
 		if ( indexPath.row == 4 ) {
 			UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
 			cell.textLabel.text = @"Reset to Defaults";

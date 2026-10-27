@@ -3,6 +3,7 @@
 #include "../ios/ios_layer.h"
 #ifdef IOS
 #include "../ios/ios_gamepad.h"
+#include "../ios/ios_aim_assist.h"
 #endif
 
 #define TOUCH_MAX_FINGERS 10
@@ -1073,7 +1074,11 @@ void IN_TouchFinger( long long fingerId, float nx, float ny, qboolean down, qboo
 			float tapThreshold = Touch_TapThreshold();
 			if( tapDx * tapDx + tapDy * tapDy > tapThreshold * tapThreshold )
 				finger->tapCandidate = qfalse;
+#ifdef IOS
+			IOS_AimAssist_QueueLook( dx, dy, IOS_AIM_TOUCH );
+#else
 			Com_QueueEvent( 0, SE_MOUSE, (int)dx, (int)dy, 0, NULL );
+#endif
 		}
 		else if( motion && finger->zone == TOUCH_ZONE_MOVE )
 		{
